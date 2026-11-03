@@ -66,6 +66,7 @@ export function createApp() {
       realAvailable: realConfigured,
       realConfigured,
       workspaceId: DEFAULT_WORKSPACE,
+      demoUser: process.env.MERIDIAN_USER_USERNAME || '',
       banner:
         mode() === 'mock'
           ? 'Simulation: every issuer, door and tool on this page is local. Nothing leaves this machine.'

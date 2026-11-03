@@ -12,6 +12,10 @@ Fictional brand: **Meridian Pay**, a payouts platform. Person **Jordan Ellis** a
 concierge agent about payouts; specialists (`meridian-payouts`, `meridian-payments`)
 do the work; a platform-signed external agent acts for Jordan.
 
+> **Demo sign-in:** real mode signs in with the user configured in `MERIDIAN_USER_USERNAME`
+> (default setup: `cmuir+demo-user@pingone.com`; password in `~/Development/.env`). The
+> sign-in form pre-fills it. Mock mode needs no credentials. See `docs/live-identity.md`.
+
 ## Status
 
 - [x] Planned (source: walkthrough video of the AgentIAMCore "w-pay A2A, one hop at a time" demo, rebuilt on PingOne + PingOne Privilege)

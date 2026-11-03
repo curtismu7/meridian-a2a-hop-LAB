@@ -1,6 +1,8 @@
 // Real-mode pi.flow credential form: the person types their credentials; they go to OUR server,
 // which drives the PingOne flow server-side (the browser never talks to PingOne directly).
-export default function SignInForm({ flowStatus, onSubmit }) {
+// demoUser is injected by the server (MERIDIAN_USER_USERNAME) so a new operator sees the
+// credentials their environment is actually configured with.
+export default function SignInForm({ flowStatus, demoUser, onSubmit }) {
   return (
     <section className="hop" data-testid="sign-in-form">
       <header className="hop-head">
@@ -19,7 +21,7 @@ export default function SignInForm({ flowStatus, onSubmit }) {
         }}
       >
         <div className="req-row">
-          <input name="username" placeholder="Username" defaultValue="jordan.ellis" autoComplete="username" />
+          <input name="username" placeholder="Username" defaultValue={demoUser} autoComplete="username" />
         </div>
         <div className="req-row">
           <input name="password" type="password" placeholder="Password" autoComplete="current-password" />

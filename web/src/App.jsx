@@ -17,6 +17,7 @@ export default function App() {
   const [presenter, setPresenterState] = useState(false)
   const [error, setError] = useState(null)
   const [piFlow, setPiFlow] = useState(null) // real-mode native flow state for the credential form
+  const demoUser = info?.demoUser || ''
 
   useEffect(() => {
     api.info().then(({ body }) => setInfo(body)).catch(() => {})
@@ -156,6 +157,7 @@ export default function App() {
           {current === 'sign-in' && piFlow && !state['sign-in']?.response?.access_token && (
             <SignInForm
               flowStatus={piFlow.status}
+              demoUser={demoUser}
               onSubmit={async ({ username, password }) => {
                 const res = await fetch('/api/flow/sign-in-submit', {
                   method: 'POST',

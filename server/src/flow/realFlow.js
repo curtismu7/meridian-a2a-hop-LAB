@@ -105,7 +105,7 @@ export function createRealFlow({ netguard }) {
         clientId: C('WEB'),
         clientSecret: S('WEB'),
         redirectUri: process.env.MERIDIAN_WEB_REDIRECT_URI || 'http://127.0.0.1:6600/api/auth/callback',
-        loginHint: 'jordan.ellis',
+        loginHint: process.env.MERIDIAN_USER_USERNAME || 'jordan.ellis',
       })
       if (!opened.flow?.id) return { ok: false, step: stepId, status: opened.status, response: opened.flow }
       state.piFlow = { flowId: opened.flow.id, cookies: opened.cookies, codeVerifier: opened.codeVerifier }
