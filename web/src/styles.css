@@ -29,12 +29,22 @@ body {
 .topbar h1 { font-size: 18px; margin: 0 0 4px; }
 .topbar p { margin: 0; color: var(--text-dim); font-size: 13px; max-width: 640px; }
 .mode-badge {
-  margin-left: auto;
   border: 1px solid var(--border);
   border-radius: 999px;
   padding: 4px 12px;
   font-size: 12px;
 }
+.mode-btn {
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.mode-btn:hover { border-color: var(--ping-red); }
 .banner.simulation {
   margin-top: 12px;
   border: 1px solid var(--border);

@@ -1,5 +1,7 @@
 # Meridian Pay A2A, one hop at a time (LAB)
 
+Tier: Demo
+
 Walk a delegated agent token chain **one hop at a time**: sign in, hand the job to an
 external agent, exchange tokens (RFC 8693), and call MCP tools through Privilege doors.
 Every hop shows the token it carried - `sub`, `act`, `aud`, `scope` - and what the next

@@ -1,0 +1,33 @@
+{
+  "schema": "diagram-studio/1",
+  "id": "mh-delegation-chain",
+  "title": "Meridian Pay: one hop at a time",
+  "lede": "{{cast.person}} asks {{cast.agent}}. Each hop is a token exchange; the wrong hop is refused.",
+  "groups": {
+    "person": { "label": "The person", "color": "blue" },
+    "agent": { "label": "The agents", "color": "green" },
+    "platform": { "label": "Third-party platform", "color": "amber" },
+    "as": { "label": "Authorization server", "color": "red" },
+    "door": { "label": "Privilege doors", "color": "dark" },
+    "tools": { "label": "Tools", "color": "grey" }
+  },
+  "nodes": [
+    { "id": "jordan", "group": "person", "label": "{{cast.personShort}}", "sub": ["Signs in once", "Never sees a token"], "x": 0, "y": 200 },
+    { "id": "external", "group": "platform", "label": "External agent ({{cast.platform}})", "sub": ["Third-party signed JWT", "Trust established at the AS"], "x": 0, "y": 20 },
+    { "id": "as", "group": "as", "label": "Authorization server", "sub": ["Exchanges: subject + actor", "Mints the act claim"], "x": 300, "y": 110 },
+    { "id": "concierge", "group": "agent", "label": "{{cast.agent}}", "sub": ["Holds the person token", "Picks the specialist"], "x": 300, "y": 290 },
+    { "id": "payouts", "group": "agent", "label": "{{cast.specialistPayouts}}", "sub": ["scope mp:payouts", "Its own door"], "x": 640, "y": 200 },
+    { "id": "payments", "group": "agent", "label": "{{cast.specialistPayments}}", "sub": ["scope mp:payments", "Its own door"], "x": 640, "y": 360 },
+    { "id": "payouts-door", "group": "door", "label": "Payouts door", "sub": ["Required claims: act.sub, client_id"], "x": 900, "y": 200 },
+    { "id": "payouts-mcp", "group": "tools", "label": "query_account_payouts", "sub": ["take_guest_payment is the refusal bait"], "x": 1150, "y": 200 }
+  ],
+  "steps": [
+    { "node": "jordan", "what": "{{cast.personShort}} signs in; the token says sub={{cast.personShort}}, aud=meridian-web" },
+    { "node": "external", "what": "The external agent arrives with a platform-signed JWT; it is not from our issuer" },
+    { "node": "as", "what": "Third-party exchange: subject + actor (jwt type) mints a domain token with act set" },
+    { "node": "concierge", "what": "The concierge decides: payouts" },
+    { "node": "payouts", "what": "Exchange: the person token becomes a payouts token (aud, scope, act.sub)" },
+    { "node": "payouts-door", "what": "The door checks the required claims before anything runs" },
+    { "node": "payouts-mcp", "what": "The MCP tool runs; the wrong specialist here is refused with 403" }
+  ]
+}

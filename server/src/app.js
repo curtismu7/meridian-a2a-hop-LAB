@@ -1,4 +1,5 @@
-import express from 'express'
+import { createNetguard } from './netguard.js'
+import { createWorkspaces, DEFAULT_WORKSPACE, WORKSPACE_HEADER } from './workspaces.js'
 
 export function createApp() {
   const app = express()
@@ -7,20 +8,68 @@ export function createApp() {
 
   const mode = () => (process.env.DEMO_MODE === 'real' ? 'real' : 'mock')
 
+  const netguard = createNetguard({ mode, liveOrigins: () => [] })
+  const workspaces = createWorkspaces({
+    build: (id) => ({ id, steps: {}, tokens: [] }),
+    reset: (ws) => {
+      ws.steps = {}
+      ws.tokens = []
+      return ws
+    },
+  })
+  // Workspace scoping middleware (rule 13): every /api/* route sees req.workspaceId.
+  app.use('/api', (req, _res, next) => {
+    try {
+      req.workspaceId = req.get(WORKSPACE_HEADER) || DEFAULT_WORKSPACE
+      workspaces.get(req.workspaceId)
+      next()
+    } catch (e) {
+      next(e)
+    }
+  })
+
   app.get('/api/health', (_req, res) => {
     res.json({ app: 'demo-health/1', state: 'ready', mode: mode() })
   })
 
+  app.get('/api/netguard/self-test', async (_req, res) => {
+    res.json(await netguard.selfTest())
+  })
+
   app.get('/api/info', (_req, res) => {
+    const realConfigured = Boolean(
+      process.env.MERIDIAN_PINGONE_ENV_ID &&
+        process.env.MERIDIAN_CONCIERGE_CLIENT_ID &&
+        process.env.MERIDIAN_CONCIERGE_CLIENT_SECRET,
+    )
     res.json({
       app: 'meridian-a2a-hop',
       mode: mode(),
-      realConfigured: false,
+      realAvailable: realConfigured,
+      realConfigured,
+      workspaceId: DEFAULT_WORKSPACE,
       banner:
         mode() === 'mock'
           ? 'Simulation: every issuer, door and tool on this page is local. Nothing leaves this machine.'
           : 'Real: exchanges hit your PingOne tenant; doors are the live Privilege gateway.',
     })
+  })
+
+  app.post('/api/mode', (req, res) => {
+    const want = req.body && req.body.mode
+    if (want !== 'mock' && want !== 'real') {
+      return res.status(400).json({ error: 'mode must be "mock" or "real"' })
+    }
+    const realConfigured = Boolean(
+      process.env.MERIDIAN_PINGONE_ENV_ID &&
+        process.env.MERIDIAN_CONCIERGE_CLIENT_ID &&
+        process.env.MERIDIAN_CONCIERGE_CLIENT_SECRET,
+    )
+    if (want === 'real' && !realConfigured) {
+      return res.status(409).json({ error: 'Real mode is not configured (set MERIDIAN_* in the shared env).' })
+    }
+    process.env.DEMO_MODE = want
+    res.json({ mode: mode() })
   })
 
   return app
