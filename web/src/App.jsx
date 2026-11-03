@@ -5,6 +5,7 @@ import { fillCast } from './cast.js'
 import { loadDiagram, DIAGRAM_IDS } from './diagrams/index.js'
 import DiagramView from './DiagramView.jsx'
 import Hop from './Hop.jsx'
+import SignInForm from './SignInForm.jsx'
 import CapturedTokens from './CapturedTokens.jsx'
 
 export default function App() {
@@ -15,6 +16,7 @@ export default function App() {
   const [current, setCurrent] = useState('sign-in')
   const [presenter, setPresenterState] = useState(false)
   const [error, setError] = useState(null)
+  const [piFlow, setPiFlow] = useState(null) // real-mode native flow state for the credential form
 
   useEffect(() => {
     api.info().then(({ body }) => setInfo(body)).catch(() => {})
@@ -64,6 +66,11 @@ export default function App() {
     if (res.status !== 200) {
       setError(res.body?.error || 'Request failed')
       return
+    }
+    if (step.id === 'sign-in' && res.body.piFlow) {
+      setPiFlow(res.body.piFlow) // real mode: show the credential form instead of advancing
+      setState((s) => ({ ...s, [step.id]: { ...res.body, request: res.body.request ?? step.request } }))
+      return // the credential form completes this hop
     }
     setState((s) => ({ ...s, [step.id]: { ...res.body, request: res.body.request ?? step.request } }))
     refreshCaptured()
@@ -146,6 +153,27 @@ export default function App() {
         </nav>
 
         <div className="main-pane">
+          {current === 'sign-in' && piFlow && !state['sign-in']?.response?.access_token && (
+            <SignInForm
+              flowStatus={piFlow.status}
+              onSubmit={async ({ username, password }) => {
+                const res = await fetch('/api/flow/sign-in-submit', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ username, password }),
+                })
+                const body = await res.json()
+                if (body.ok && body.response?.access_token) {
+                  setPiFlow(null)
+                  setState((s) => ({ ...s, 'sign-in': { ok: true, response: body.response, status: 200 } }))
+                  refreshCaptured()
+                  setCurrent('external-agent')
+                } else {
+                  setError(body.flow?.message || body.error || 'Sign-in failed')
+                }
+              }}
+            />
+          )}
           {steps
             .filter((s) => s.id === current)
             .map((s) => (
