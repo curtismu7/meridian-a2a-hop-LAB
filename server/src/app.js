@@ -1,3 +1,4 @@
+import express from 'express'
 import { createNetguard } from './netguard.js'
 import { createWorkspaces, DEFAULT_WORKSPACE, WORKSPACE_HEADER } from './workspaces.js'
 
