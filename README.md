@@ -15,9 +15,9 @@ do the work; a platform-signed external agent acts for Jordan.
 ## Status
 
 - [x] Planned (source: walkthrough video of the AgentIAMCore "w-pay A2A, one hop at a time" demo, rebuilt on PingOne + PingOne Privilege)
-- [ ] Phase 0 scaffold (this commit)
-- [ ] Phase 1 mock mode (fully offline, stub issuer with third-party trusted-issuer registry, mock Privilege doors, refusal matrix)
-- [ ] Phase 2 real mode (PingOne pi.flow sign-in, measured third-party token exchange, HAProxy-fronted gateway doors)
+- [x] Phase 0 scaffold (UI shell, stepper, diagram, Docker, conformance 0 failed)
+- [x] Phase 1 mock mode (fully offline, stub issuer with third-party trusted-issuer registry, mock Privilege doors, refusal matrix)
+- [ ] Phase 2 real mode (PingOne pi.flow sign-in, measured third-party token exchange, HAProxy-fronted gateway doors) — pi.flow sign-in and the live exchanges landed and were verified against the tenant; Privilege doors are not registered yet, so MCP hops fall back to the local backends and say so
 - [ ] v1.1: A2A chat tail (agent card, chat, compliance badges)
 
 ## Run
