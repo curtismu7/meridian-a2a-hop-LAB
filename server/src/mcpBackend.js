@@ -24,7 +24,7 @@ const TOOLS = [
   },
   {
     name: 'take_guest_payment',
-    description: 'Take a guest payment. Refusal bait: no specialist’s policy allows this tool.',
+    description: 'Take a guest payment. The payments door’s write: records the payment and returns a receipt.',
     inputSchema: { type: 'object', properties: { amount: { type: 'number' } } },
   },
 ]
@@ -55,7 +55,22 @@ app.post('/mcp', (req, res) => {
         })
       }
       if (name === 'take_guest_payment') {
-        return reply({ content: [{ type: 'text', text: 'refused by tool backend' }], isError: true })
+        // Real mode: the payments door's one write. Record a seeded guest payment and return a receipt.
+        const amount = Number(args.amount)
+        if (!Number.isFinite(amount) || amount <= 0) {
+          return reply({ content: [{ type: 'text', text: 'amount must be a positive number' }], isError: true })
+        }
+        const receipt = {
+          payoutId: `po_${Math.floor(1000 + Math.random() * 9000)}`,
+          state: 'COMPLETED',
+          amount,
+          currency: 'USD',
+          account: 'Meridian guest',
+          date: new Date().toISOString().slice(0, 10),
+          reference: 'GP-MCP',
+        }
+        payouts.unshift(receipt)
+        return reply({ content: [{ type: 'text', text: JSON.stringify(receipt) }] })
       }
       return err(-32602, `Unknown tool: ${name}`)
     }
