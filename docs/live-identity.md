@@ -1,7 +1,8 @@
 # Live-mode identities (Phase 2)
 
-One identity runs the whole demo: `cmuir+demo-user@pingone.com` ("demouser"), env
-`01d89b06-66d5-430e-9f28-65636843788b`.
+One identity runs the whole demo: username `cmuir+demo-user@pingone.com` ("demouser"), env
+`01d89b06-66d5-430e-9f28-65636843788b`. That email-shaped string IS the PingOne username -
+type it in the username box (the real-mode form pre-fills it from `MERIDIAN_USER_USERNAME`).
 
 - pi.flow person sign-in (real mode step 1) uses `MERIDIAN_USER_USERNAME`/`MERIDIAN_USER_PASSWORD`
   (in `~/Development/.env`, both set to demouser creds).
