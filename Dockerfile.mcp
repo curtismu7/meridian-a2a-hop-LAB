@@ -1,0 +1,12 @@
+# Meridian MCP backend image (arm64: the SE cluster nodes are Graviton).
+# LABEL source links the GHCR package to this repo (required for Actions push access).
+FROM node:26-alpine
+WORKDIR /app
+LABEL org.opencontainers.image.source=https://github.com/ping-sandbox/meridian-a2a-hop-LAB
+COPY server/package.json server/
+RUN cd server && npm install --omit=dev --no-audit --no-fund && npm cache clean --force
+COPY server/src/mcpBackend.js server/src/payoutsData.js server/src/
+ENV NODE_ENV=production PORT=8899
+USER node
+EXPOSE 8899
+CMD ["node", "server/src/mcpBackend.js"]
