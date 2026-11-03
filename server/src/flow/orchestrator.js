@@ -112,6 +112,15 @@ export function createFlow() {
       return { ok: true, step: stepId, decision }
     }
 
+    if (stepId === 'external-agent') {
+      // The external agent presents its platform-signed JWTs: mint them (stub for the real platform's key)
+      // and stash them so the next hop's placeholders {external_subject_token}/{external_actor_token} resolve.
+      if (!state.externalSubjectToken) await mintExternalTokens()
+      const req = resolvePlaceholders({ ...step.request, ...overrides.request }, ctx())
+      const res = await sendJson(req)
+      return { ok: res.status < 400, step: stepId, status: res.status, response: res.json, request: req, external: { subject: state.externalSubjectToken, actor: state.externalActorToken } }
+    }
+
     if (stepId === 'mcp-payouts') {
       const body = resolvePlaceholders(overrides.body ?? step.request.body, { ...ctx(), tokens: state.tokens ?? {} })
       const doorCheck = await doors.checkDoor(body.door, body.token, body.tool)

@@ -52,6 +52,13 @@ export default function App() {
       delete body.actor_token
       delete body.actor_token_type
       overrides.request = { ...step.request, body }
+    } else if (refusalId === 'other-specialist-tool') {
+      overrides.body = { ...step.request.body, tool: 'take_guest_payment' }
+    } else if (refusalId === 'wrong-door') {
+      overrides.body = { ...step.request.body, door: 'meridian-payments' }
+    } else if (refusalId === 'skip-concierge') {
+      // Present the person's own token at the payouts door (never exchanged): 401 required act.sub.
+      overrides.body = { ...step.request.body, token: '{token:person}' }
     }
     const res = await api.run(step.id, overrides)
     if (res.status !== 200) {
@@ -60,8 +67,10 @@ export default function App() {
     }
     setState((s) => ({ ...s, [step.id]: { ...res.body, request: res.body.request ?? step.request } }))
     refreshCaptured()
+    // Stay on a refused hop so the refusal is read; advance only when the hop went through.
+    const wentThrough = !res.body.refused && (res.body.status === undefined || res.body.status < 400)
     const idx = steps.findIndex((s) => s.id === step.id)
-    if (idx >= 0 && idx < steps.length - 1) setCurrent(steps[idx + 1].id)
+    if (wentThrough && idx >= 0 && idx < steps.length - 1) setCurrent(steps[idx + 1].id)
   }
 
   async function startOver() {
