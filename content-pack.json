@@ -1,0 +1,84 @@
+{
+  "schema": "demo-content-pack/1",
+  "id": "meridian-a2a-hop",
+  "title": "Meridian Pay A2A, one hop at a time: a delegated token chain you walk yourself",
+  "version": "0.1.0",
+  "source": {
+    "repo": "ping-sandbox/meridian-a2a-hop-LAB",
+    "commit": "phase-0",
+    "generated": "2026-11-03"
+  },
+  "demo": {
+    "id": "meridian-a2a-hop",
+    "name": "Meridian Pay A2A hop lab",
+    "catalog": "D110",
+    "baseUrl": "http://127.0.0.1:6600",
+    "doctor": "/api/health",
+    "tags": [
+      "a2a",
+      "token-exchange",
+      "rfc8693",
+      "act-claim",
+      "privilege",
+      "mcp",
+      "third-party",
+      "external-agent"
+    ]
+  },
+  "glossary": [
+    {
+      "id": "hop",
+      "term": "Hop",
+      "definition": "One leg of a delegated call: a token crosses from one actor to the next, usually through a token exchange. The demo walks the hops one at a time, by hand, so each change is visible.",
+      "aliases": ["leg"]
+    },
+    {
+      "id": "token-exchange",
+      "term": "Token exchange",
+      "definition": "RFC 8693. An OAuth grant where one token is swapped for another at the authorization server: the caller presents a subject_token (and optionally an actor_token) and receives a new access token with a different audience, scope, or act claim.",
+      "aliases": ["RFC 8693", "exchange"]
+    },
+    {
+      "id": "act-claim",
+      "term": "act claim",
+      "definition": "An object-valued claim in an access token naming the actor that is acting for the subject (RFC 8693). act.sub is the agent; sub is the person or workload it acts for. Nested act claims build the chain.",
+      "aliases": ["actor"]
+    },
+    {
+      "id": "third-party-token",
+      "term": "Third-party token",
+      "definition": "A JWT signed by an issuer outside the platform's own trust domain (a platform-issued agent identity, a SPIFFE workload). The platform establishes trust in that issuer once - issuer string plus JWKS - and then accepts its tokens as subject or actor in a token exchange.",
+      "aliases": ["external agent token", "platform token"]
+    },
+    {
+      "id": "actor-token",
+      "term": "actor_token",
+      "definition": "The optional second token in an RFC 8693 request. It names who is doing the exchanging. For a third-party actor it must carry type urn:ietf:params:oauth:token-type:jwt; PingOne refuses access_token for it.",
+      "aliases": []
+    },
+    {
+      "id": "concierge",
+      "term": "Concierge",
+      "definition": "The agent that faces the person. It holds the person's token, decides which specialist handles the request, and exchanges the person's token for one scoped to that specialist.",
+      "aliases": ["orchestrator"]
+    },
+    {
+      "id": "specialist",
+      "term": "Specialist",
+      "definition": "A scoped agent that owns one capability (payouts, payments). Each has its own resource, audience, MCP door, and tool policy. A specialist's token must not open another specialist's door.",
+      "aliases": []
+    },
+    {
+      "id": "door",
+      "term": "Door",
+      "definition": "A Privilege-registered MCP endpoint with its own required claims (act.sub, client_id) and audience. The gateway refuses a call whose token does not satisfy the door's claims, even if the signature is valid.",
+      "aliases": ["MCP door", "required claims"]
+    },
+    {
+      "id": "delegation-chain",
+      "term": "Delegation chain",
+      "definition": "The full sequence of tokens a request accumulated, read side by side: who the subject was at each hop and who acted for them. The demo's Captured Tokens panel is this chain, live.",
+      "aliases": []
+    }
+  ]
+}

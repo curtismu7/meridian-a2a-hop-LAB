@@ -1,0 +1,31 @@
+{
+  "name": "meridian-a2a-hop-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A2A one hop at a time LAB: walk a delegated token chain hop by hop - sign in, third-party external agent, RFC 8693 exchanges, MCP tool calls through Privilege doors - with every token's sub/act shown",
+  "license": "UNLICENSED",
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "engines": {
+    "node": ">=26"
+  },
+  "scripts": {
+    "dev": "npm run dev -w server & npm run dev -w web",
+    "prestart": "node scripts/shelf-register.mjs",
+    "start": "node scripts/start.mjs",
+    "test": "npm test -w server && npm test -w web",
+    "build": "npm run build -w web",
+    "doctor": "node scripts/doctor.mjs",
+    "prepare": "git config core.hooksPath .githooks || true",
+    "e2e": "node scripts/e2e.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "reset": "node scripts/reset.mjs",
+    "check:ui": "bash scripts/check-ui-standard.sh"
+  },
+  "devDependencies": {
+    "playwright": "1.58.2"
+  }
+}

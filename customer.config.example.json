@@ -1,0 +1,22 @@
+# Customer config - meridian-a2a-hop-LAB (real mode, owner-run)
+
+Copy this file to `customer.config.json` (git-ignored) or put the keys in the shared
+`~/Development/.env`. The app reads them only when the header is switched to Real; mock
+mode never touches them.
+
+| Key | Meaning |
+| --- | --- |
+| `MERIDIAN_PINGONE_ENV_ID` | PingOne environment id |
+| `MERIDIAN_PINGONE_REGION` | PingOne region (e.g. NorthAmerica) |
+| `MERIDIAN_WEB_CLIENT_ID` / `_SECRET` | the person-facing sign-in app (pi.flow) |
+| `MERIDIAN_CONCIERGE_CLIENT_ID` / `_SECRET` | the concierge exchanger app |
+| `MERIDIAN_PAYOUTS_CLIENT_ID` / `_SECRET` | the payouts specialist app |
+| `MERIDIAN_PAYMENTS_CLIENT_ID` / `_SECRET` | the payments specialist app |
+| `MERIDIAN_TRUSTED_ISSUER` | external platform issuer string (exact match) |
+| `MERIDIAN_TRUSTED_ISSUER_JWKS_URL` | its JWKS URL (or paste the JWKS in console) |
+| `MERIDIAN_AGENT_PLATFORM_JWT` | a platform-signed agent JWT for the live external-agent hop |
+| `MERIDIAN_MCP_DOOR_PAYOUTS_URL` | Privilege door URL for payouts (`https://mcpgw.../meridian-payouts/mcp`) |
+| `MERIDIAN_MCP_DOOR_PAYMENTS_URL` | Privilege door URL for payments |
+| `MERIDIAN_AGENT_KEY` | calling-agent key registered on the gateway |
+
+Never commit real values. Secrets are write-only server side and never reach the page.
