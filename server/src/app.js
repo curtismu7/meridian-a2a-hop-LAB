@@ -5,6 +5,7 @@ import path from 'node:path'
 import { createNetguard } from './netguard.js'
 import { createWorkspaces, DEFAULT_WORKSPACE, WORKSPACE_HEADER } from './workspaces.js'
 import { createFlow } from './flow/orchestrator.js'
+import { createRealFlow } from './flow/realFlow.js'
 
 export function createApp() {
   const app = express()
@@ -13,8 +14,20 @@ export function createApp() {
 
   const mode = () => (process.env.DEMO_MODE === 'real' ? 'real' : 'mock')
 
-  const netguard = createNetguard({ mode, liveOrigins: () => [] })
+  const netguard = createNetguard({
+    mode,
+    liveOrigins: () => {
+      const envId = process.env.MERIDIAN_PINGONE_ENV_ID
+      const origins = []
+      if (envId) origins.push(new URL(`https://auth.pingone.com/${envId}`).origin)
+      for (const k of ['MERIDIAN_MCP_DOOR_PAYOUTS_URL', 'MERIDIAN_MCP_DOOR_PAYMENTS_URL']) {
+        if (process.env[k]) origins.push(new URL(process.env[k]).origin)
+      }
+      return origins
+    },
+  })
   const flow = createFlow()
+  const realFlow = createRealFlow({ netguard })
   const workspaces = createWorkspaces({
     build: (id) => ({ id }),
     reset: (ws) => {
@@ -81,11 +94,13 @@ export function createApp() {
   app.get('/api/flow/steps', (_req, res) => res.json({ steps: flow.STEPS }))
 
   app.get('/api/flow/captured', (req, res) => {
-    res.json({ tokens: flow.captured })
+    const active = mode() === 'real' ? realFlow.captured : flow.captured
+    res.json({ tokens: active })
   })
 
   app.post('/api/flow/reset', (req, res) => {
     flow.reset()
+    realFlow.reset()
     res.json({ ok: true })
   })
 
@@ -96,8 +111,15 @@ export function createApp() {
 
   app.post('/api/flow/run', async (req, res) => {
     const { step, overrides } = req.body || {}
-    const result = await flow.runStep(step, overrides)
+    const result = mode() === 'real' ? await realFlow.runStep(step, overrides) : await flow.runStep(step, overrides)
     res.json(result)
+  })
+
+  // pi.flow native sign-in: the UI collects credentials and posts them here (real mode only).
+  app.post('/api/flow/sign-in-submit', async (req, res) => {
+    if (mode() !== 'real') return res.status(409).json({ error: 'sign-in-submit is a real-mode route' })
+    const { username, password } = req.body || {}
+    res.json(await realFlow.signInSubmit({ username, password }))
   })
 
   // Static hosting: the built web app, with the API routes taking precedence.
