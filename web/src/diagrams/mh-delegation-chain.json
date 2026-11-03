@@ -12,22 +12,31 @@
     "tools": { "label": "Tools", "color": "grey" }
   },
   "nodes": [
-    { "id": "jordan", "group": "person", "label": "{{cast.personShort}}", "sub": ["Signs in once", "Never sees a token"], "x": 0, "y": 200 },
-    { "id": "external", "group": "platform", "label": "External agent ({{cast.platform}})", "sub": ["Third-party signed JWT", "Trust established at the AS"], "x": 0, "y": 20 },
-    { "id": "as", "group": "as", "label": "Authorization server", "sub": ["Exchanges: subject + actor", "Mints the act claim"], "x": 300, "y": 110 },
-    { "id": "concierge", "group": "agent", "label": "{{cast.agent}}", "sub": ["Holds the person token", "Picks the specialist"], "x": 300, "y": 290 },
-    { "id": "payouts", "group": "agent", "label": "{{cast.specialistPayouts}}", "sub": ["scope mp:payouts", "Its own door"], "x": 640, "y": 200 },
-    { "id": "payments", "group": "agent", "label": "{{cast.specialistPayments}}", "sub": ["scope mp:payments", "Its own door"], "x": 640, "y": 360 },
-    { "id": "payouts-door", "group": "door", "label": "Payouts door", "sub": ["Required claims: act.sub, client_id"], "x": 900, "y": 200 },
-    { "id": "payouts-mcp", "group": "tools", "label": "query_account_payouts", "sub": ["take_guest_payment is the refusal bait"], "x": 1150, "y": 200 }
+    { "id": "jordan", "group": "person", "label": "{{cast.personShort}}", "sub": ["Signs in once", "Never sees a token"], "x": 0, "y": 330 },
+    { "id": "external", "group": "platform", "label": "External agent", "sub": ["{{cast.platform}}", "Third-party signed JWT"], "x": 0, "y": 40 },
+    { "id": "as", "group": "as", "label": "Authorization server", "sub": ["Exchanges: subject + actor", "Mints the act claim"], "x": 340, "y": 40 },
+    { "id": "concierge", "group": "agent", "label": "{{cast.agent}}", "sub": ["Holds the person token", "Picks the specialist"], "x": 340, "y": 330 },
+    { "id": "payouts", "group": "agent", "label": "{{cast.specialistPayouts}}", "sub": ["scope mp:payouts", "Its own door"], "x": 680, "y": 330 },
+    { "id": "payments", "group": "agent", "label": "{{cast.specialistPayments}}", "sub": ["scope mp:payments", "Its own door"], "x": 680, "y": 560 },
+    { "id": "payouts-door", "group": "door", "label": "Payouts door", "sub": ["Required: act.sub, client_id"], "x": 1010, "y": 330 },
+    { "id": "payouts-mcp", "group": "tools", "label": "Payouts MCP", "sub": ["query_account_payouts", "take_guest_payment = bait"], "x": 1330, "y": 330 }
+  ],
+  "edges": [
+    { "source": "external", "target": "as", "label": "third-party JWT", "step": 1 },
+    { "source": "as", "target": "concierge", "label": "domain token, act set", "dashed": true, "step": 2 },
+    { "source": "jordan", "target": "concierge", "label": "signs in once", "step": 0 },
+    { "source": "concierge", "target": "as", "label": "exchange: person -> payouts", "back": true, "step": 3 },
+    { "source": "as", "target": "payouts", "label": "payouts token", "dashed": true, "step": 4 },
+    { "source": "payouts", "target": "payouts-door", "label": "token + tools/call", "step": 5 },
+    { "source": "payouts-door", "target": "payouts-mcp", "label": "allowed", "step": 6 },
+    { "source": "payouts", "target": "payments", "label": "wrong door (refused)", "dashed": true, "step": 6 }
   ],
   "steps": [
-    { "node": "jordan", "what": "{{cast.personShort}} signs in; the token says sub={{cast.personShort}}, aud=meridian-web" },
-    { "node": "external", "what": "The external agent arrives with a platform-signed JWT; it is not from our issuer" },
-    { "node": "as", "what": "Third-party exchange: subject + actor (jwt type) mints a domain token with act set" },
-    { "node": "concierge", "what": "The concierge decides: payouts" },
-    { "node": "payouts", "what": "Exchange: the person token becomes a payouts token (aud, scope, act.sub)" },
-    { "node": "payouts-door", "what": "The door checks the required claims before anything runs" },
-    { "node": "payouts-mcp", "what": "The MCP tool runs; the wrong specialist here is refused with 403" }
+    { "title": "{{cast.personShort}} signs in", "what": "The token says sub={{cast.personShort}}, aud=meridian-web. The person never sees it.", "edges": [2] },
+    { "title": "The external agent arrives", "what": "{{cast.platform}}'s agent presents a third-party signed JWT. Trust was established once at the authorization server.", "edges": [0] },
+    { "title": "Third-party exchange", "what": "subject + actor (jwt type) mints a domain token with act set. The actor chain is built at the AS.", "edges": [1] },
+    { "title": "Exchange: concierge -> payouts", "what": "The concierge never passes the person's token onward; it exchanges it for a payouts token.", "edges": [3, 4] },
+    { "title": "The payouts door", "what": "The door checks the required claims (act.sub, client_id) before anything runs.", "edges": [5] },
+    { "title": "The MCP tool runs - or is refused", "what": "query_account_payouts runs. The payments door (or the wrong tool) is refused with 403.", "edges": [6, 7] }
   ]
 }
