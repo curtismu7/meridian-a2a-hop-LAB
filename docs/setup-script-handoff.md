@@ -71,7 +71,8 @@ The Privilege gateway **never validates PingOne JWTs on MCP doors**. Measured:
 - **Local desktop console** `https://local.procyon.ai:8643` (PingOne Privilege.app must
   run; self-signed cert): key/secret from Settings → For Developers as `x-api-key`/
   `x-api-secret` (+ required-but-unvalidated `x-procyon-session-id` UUID). Reference
-  script: `AI-DEMO2/privilege/scripts/bootstrap-hostile-governed.mjs` (clone/policy
+  script: the `bootstrap-hostile-governed.mjs` script in the main demo repo's
+  `privilege/scripts/` directory (clone/policy
   shapes, the `@@@` vs `@@` separator trap).
 - **Cloud console** `console.privilege.pingone.com`: worker tokens are REJECTED (401,
   measured). Only the browser `auth_token` cookie works. If the user's Privilege tenant
