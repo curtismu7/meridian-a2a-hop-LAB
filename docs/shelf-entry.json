@@ -2,7 +2,7 @@
   "id": "meridian-a2a-hop",
   "name": "Meridian Pay A2A hop lab",
   "kind": "Demo",
-  "description": "Walk a delegated agent token chain one hop at a time: sign in, hand the job to a platform-signed external agent, exchange tokens (RFC 8693, third-party subject and actor), and call MCP tools through Privilege doors. Every hop shows sub/act/aud/scope, and refusals are demoed on purpose. Runs offline in mock mode (stub issuer with a trusted-issuer registry) or against your PingOne tenant in live mode.",
+  "description": "Walk a delegated agent token chain one hop at a time: sign in, hand the job to a platform-signed external agent, exchange tokens (RFC 8693, third-party subject and actor), and call MCP tools through Privilege doors. Every hop shows sub/act/aud/scope, and refusals are demoed on purpose. Runs…",
   "url": "http://127.0.0.1:6600",
   "healthPath": "/api/health",
   "composeFile": "docker-compose.yml",
