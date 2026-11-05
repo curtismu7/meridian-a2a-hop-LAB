@@ -8,6 +8,7 @@ services:
     ports:
       - "127.0.0.1:${HOST_PORT:-6600}:6600"
     environment:
+      SHELF_URL: ${SHELF_URL:-}
       PORT: "6600"
       DEMO_MODE: ${DEMO_MODE:-mock}
       # Mock sign-in (rule 11) is allowed here because the port above is published on 127.0.0.1 only; LAB_PUBLISH says so.
