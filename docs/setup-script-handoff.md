@@ -12,7 +12,7 @@ script must create, the measured API shapes, and the traps that cost this sessio
 
 | Piece | Where |
 |---|---|
-| meridian-mcp backend (Deployment + Service) | SE cluster `ping-devops-cmuir`, image `ghcr.io/ping-sandbox/meridian-mcp:latest` (arm64; port 8899 → svc 80) |
+| meridian-mcp backend (Deployment + Service) | SE cluster `ping-devops-cmuir`, image `ghcr.io/curtismu7/meridian-mcp:latest` (arm64; port 8899 → svc 80) |
 | Privilege doors `meridian-payouts`, `meridian-payments` | Agentic Apps (MCP Server), backend `http://meridian-mcp.ping-devops-cmuir.svc.cluster.local/mcp`, EntryPath `/mcp`, MeshCluster `ai-demo-cmuir`, AuthMode `static-token` (irrelevant — see §3) |
 | NHI `MeridianAgent` | workload-identity federation: Issuer `https://auth.pingone.com/01d89b06-…/as`, JwksURI `…/as/jwks`, Audience `meridian-api`, Subject `*`, AllowAnySubject, RequiredClaims `{client_id: <payouts client>}`, Platform `oidc`, SubjectBinding `opaque` |
 | Agent access key `meridian-agent` | mcp scope, CustodianRef → MeridianAgent |

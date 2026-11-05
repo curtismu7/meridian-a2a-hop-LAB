@@ -33,6 +33,6 @@ jobs:
         run: |
           # The package visibility toggle is UI-only; print instructions if 201 is not returned.
           # The cluster pull secret authorizes ghcr.io; visibility must be public or the secret's
-          # PAT must include read:packages for ping-sandbox/meridian-mcp.
+          # PAT must include read:packages for curtismu7/meridian-mcp.
           echo "If the cluster pull fails with 'denied', set the package public in GitHub UI:"
           echo "  https://github.com/curtismu7/meridian-a2a-hop-LAB/pkgs/container/meridian-mcp"
