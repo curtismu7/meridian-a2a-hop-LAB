@@ -7,6 +7,7 @@ import DiagramView from './DiagramView.jsx'
 import Hop from './Hop.jsx'
 import SignInForm from './SignInForm.jsx'
 import CapturedTokens from './CapturedTokens.jsx'
+import ShelfLink from "./components/ShelfLink.jsx";
 
 export default function App() {
   const [info, setInfo] = useState(null)
@@ -108,6 +109,7 @@ export default function App() {
         <span className="logo">wpt</span>
         <div>
           <h1>Meridian Pay A2A, one hop at a time</h1>
+        <ShelfLink />
           <p>
             Every hop is a token exchange and a call through a Privilege door. Each form is prefilled from the
             step before it; change any value before you send.

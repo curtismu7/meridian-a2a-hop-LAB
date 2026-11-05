@@ -6,6 +6,7 @@ import { createNetguard } from './netguard.js'
 import { createWorkspaces, DEFAULT_WORKSPACE, WORKSPACE_HEADER } from './workspaces.js'
 import { createFlow } from './flow/orchestrator.js'
 import { createRealFlow } from './flow/realFlow.js'
+import { shelfInfo } from './shelfLink.js';
 
 export function createApp() {
   const app = express()
@@ -126,6 +127,7 @@ export function createApp() {
   // Static hosting: the built web app, with the API routes taking precedence.
   const dist = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../web/dist')
   if (existsSync(dist)) {
+app.get('/api/shelf', (_req, res) => { res.set('Cache-Control', 'no-store'); res.json(shelfInfo()); }); // the header "Shelf" button
     app.use(express.static(dist))
     app.get(/^\/(?!api\/).*/, (_req, res) => res.sendFile(path.join(dist, 'index.html')))
   }
