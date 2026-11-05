@@ -28,7 +28,7 @@ jobs:
           file: Dockerfile.mcp
           platforms: linux/arm64
           push: true
-          tags: ghcr.io/ping-sandbox/meridian-mcp:${{ github.sha }},ghcr.io/ping-sandbox/meridian-mcp:latest
+          tags: ghcr.io/curtismu7/meridian-mcp:${{ github.sha }},ghcr.io/curtismu7/meridian-mcp:latest
       - name: Make the package public (anonymous pull from the cluster)
         run: |
           # The package visibility toggle is UI-only; print instructions if 201 is not returned.

@@ -4,7 +4,7 @@
   "title": "Meridian Pay A2A, one hop at a time: a delegated token chain you walk yourself",
   "version": "0.1.0",
   "source": {
-    "repo": "ping-sandbox/meridian-a2a-hop-LAB",
+    "repo": "curtismu7/meridian-a2a-hop-LAB",
     "commit": "phase-0",
     "generated": "2026-11-03"
   },
