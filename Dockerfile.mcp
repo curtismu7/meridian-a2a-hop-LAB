@@ -2,7 +2,7 @@
 # LABEL source links the GHCR package to this repo (required for Actions push access).
 FROM node:26-alpine
 WORKDIR /app
-LABEL org.opencontainers.image.source=https://github.com/ping-sandbox/meridian-a2a-hop-LAB
+LABEL org.opencontainers.image.source=https://github.com/curtismu7/meridian-a2a-hop-LAB
 COPY server/package.json server/
 RUN cd server && npm install --omit=dev --no-audit --no-fund && npm cache clean --force
 COPY server/src/mcpBackend.js server/src/payoutsData.js server/src/
