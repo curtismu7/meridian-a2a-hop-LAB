@@ -9,8 +9,23 @@ import SignInForm from './SignInForm.jsx'
 import CapturedTokens from './CapturedTokens.jsx'
 import ShelfLink from "./components/ShelfLink.jsx";
 
+const THEME_KEY = "ma2a.theme";
+const THEMES = [["auto", "Auto"], ["light", "Light"], ["dark", "Dark"]];
+function initialTheme() {
+  try { const t = localStorage.getItem(THEME_KEY); if (t === "light" || t === "dark") return t; } catch { /* storage blocked */ }
+  return "auto";
+}
+
 export default function App() {
   const [info, setInfo] = useState(null)
+  const [theme, setTheme] = useState(initialTheme)
+
+  useEffect(() => { if (theme === "auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = theme; }, [theme])
+
+  const pickTheme = (next) => {
+    try { if (next === "auto") localStorage.removeItem(THEME_KEY); else localStorage.setItem(THEME_KEY, next); } catch { /* not remembered */ }
+    setTheme(next)
+  }
   const [steps, setSteps] = useState([])
   const [tokens, setTokens] = useState([])
   const [state, setState] = useState({}) // stepId -> { request, response, refused, result }
@@ -130,6 +145,11 @@ export default function App() {
         <button type="button" className="mode-btn" onClick={startOver} data-testid="start-over">
           Start over
         </button>
+        <label className="shell-theme">Theme
+          <select value={theme} onChange={(e) => pickTheme(e.target.value)}>
+            {THEMES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+          </select>
+        </label>
         <button type="button" className="mode-btn" onClick={togglePresenter}>
           Presenter {presenter ? 'on' : 'off'}
         </button>

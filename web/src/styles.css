@@ -203,3 +203,6 @@ th { color: var(--muted); font-weight: 600; }
 /* Presenter mode: bigger type for a second screen */
 html.presenter { font-size: 18px; }
 html.presenter .hop-blurb, html.presenter .topbar p { font-size: 15px; }
+
+.shell-theme { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text); }
+.shell-theme select { min-height: 32px; padding: 4px 8px; }
