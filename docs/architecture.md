@@ -1,7 +1,7 @@
 # Architecture - meridian-a2a-hop-LAB
 
 ```
-web (React/Vite, :6600/dist)   server (Express, 127.0.0.1:6600)
+web (React/Vite, :7720/dist)   server (Express, 127.0.0.1:7720)
         │  /api/*                        │
         │                     ┌──────────┴───────────┐
         └────────────────────►│  step orchestrator   │
@@ -12,7 +12,7 @@ web (React/Vite, :6600/dist)   server (Express, 127.0.0.1:6600)
                               └──────────┬───────────┘
                                          │  mode=mock            mode=real (Phase 2)
                               ┌──────────┴─────────┐  ┌──────────────────────────┐
-                              │ stub-issuer :6601  │  │ PingOne /as/token        │
+                              │ stub-issuer :7721  │  │ PingOne /as/token        │
                               │ - keypair, JWKS    │  │ pi.flow sign-in          │
                               │ - trusted issuers  │  │ third-party exchange     │
                               │   (2nd keypair)    │  │ (trusted issuer + JWKS)  │
@@ -56,5 +56,5 @@ web (React/Vite, :6600/dist)   server (Express, 127.0.0.1:6600)
 
 | Port | Use |
 | --- | --- |
-| 6600 | app (server + built web), loopback only |
-| 6601 | stub-issuer host-run only (in Docker: internal network, unpublished) |
+| 7720 | app (server + built web), loopback only |
+| 7721 | stub-issuer host-run only (in Docker: internal network, unpublished) |

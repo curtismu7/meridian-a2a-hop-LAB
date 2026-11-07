@@ -34,18 +34,18 @@ npm start
 ## Ports, and what to do if the port is taken
 
 ```
-Ports: meridian-a2a-hop-LAB listens on 6600 (set with PORT, default 6600).
-Port range for this app: 6600-6649.
+Ports: meridian-a2a-hop-LAB listens on 7720 (set with PORT, default 7720).
+Port range for this app: 7720-7729.
 
 If the port is taken:
 1. Find what is using it:
-   lsof -iTCP:6600 -sTCP:LISTEN -n -P
+   lsof -iTCP:7720 -sTCP:LISTEN -n -P
 2. If it is an old copy of this app, stop that process: kill <PID>.
 3. If it is something else, stop it, or start this app on another port:
    PORT=<other port> npm start
 ```
 
-Other variable: `HOST_PORT=6600` (Docker host port). Keep both inside 6600-6649.
+Other variable: `HOST_PORT=7720` (Docker host port). Keep both inside 7720-7729.
 
 ## Status
 
@@ -60,10 +60,10 @@ Other variable: `HOST_PORT=6600` (Docker host port). Keep both inside 6600-6649.
 ```sh
 npm install
 npm run build
-npm start          # http://127.0.0.1:6600  (mock mode; nothing else to set up)
+npm start          # http://127.0.0.1:7720  (mock mode; nothing else to set up)
 ```
 
-Docker (OrbStack): `docker compose up --build -d` - publishes `127.0.0.1:6600` only.
+Docker (OrbStack): `docker compose up --build -d` - publishes `127.0.0.1:7720` only.
 
 ## Docs
 

@@ -2,7 +2,7 @@
 // E2E: Playwright happy path over the running app (Phase 1 fills in the hop steps).
 import { chromium } from 'playwright'
 
-const base = process.env.BASE_URL || 'http://127.0.0.1:6600'
+const base = process.env.BASE_URL || 'http://127.0.0.1:7720'
 const browser = await chromium.launch()
 const page = await browser.newPage()
 await page.goto(base)

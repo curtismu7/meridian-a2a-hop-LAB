@@ -1,6 +1,6 @@
 # CLAUDE.md - meridian-a2a-hop-LAB
 
-Node 26 ESM monorepo (server + web workspaces). Port 6600, loopback only. Mock mode is
+Node 26 ESM monorepo (server + web workspaces). Port 7720, loopback only. Mock mode is
 the default and must be fully offline; real mode (PingOne + Privilege) is owner-run.
 
 - Rules source: `~/Development/STANDALONE-RULES.md`. Never import from AI-DEMO2 or other labs.

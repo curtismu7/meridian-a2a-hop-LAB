@@ -1,4 +1,4 @@
-# OrbStack:  docker compose up --build -d   ->  http://127.0.0.1:6600   (mock mode; nothing else to set up)
+# OrbStack:  docker compose up --build -d   ->  http://127.0.0.1:7720   (mock mode; nothing else to set up)
 # The port is published on 127.0.0.1 only (a test pins that). Do not widen it: mock sign-in has no password.
 name: meridian-a2a-hop-lab
 
@@ -6,10 +6,10 @@ services:
   meridian-a2a-hop-lab:
     build: .
     ports:
-      - "127.0.0.1:${HOST_PORT:-6600}:6600"
+      - "127.0.0.1:${HOST_PORT:-7720}:7720"
     environment:
       SHELF_URL: ${SHELF_URL:-}
-      PORT: "6600"
+      PORT: "7720"
       DEMO_MODE: ${DEMO_MODE:-mock}
       # Mock sign-in (rule 11) is allowed here because the port above is published on 127.0.0.1 only; LAB_PUBLISH says so.
       ALLOW_MOCK_SIGNIN: "1"
@@ -24,7 +24,7 @@ services:
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:6600/api/health').then(r=>r.json()).then(j=>process.exit(j.state==='ready'?0:1)).catch(()=>process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:7720/api/health').then(r=>r.json()).then(j=>process.exit(j.state==='ready'?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
       timeout: 5s
       retries: 3
