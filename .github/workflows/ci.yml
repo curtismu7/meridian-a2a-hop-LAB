@@ -38,8 +38,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Fail on forbidden identifiers
         run: |
           if grep -rInE "cmuir_pingcorp|local\.ping-devops\.com|AI-DEMO2/" --include='*.js' --include='*.mjs' --include='*.jsx' --include='*.json' --include='*.md' . ; then
             echo "Forbidden identifier found (cross-repo import or wrong owner)"; exit 1
           fi
+      - name: No AI attribution
+        run: bash scripts/check-no-ai-attribution.sh
