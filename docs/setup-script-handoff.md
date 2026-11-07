@@ -125,16 +125,16 @@ MERIDIAN_MCP_DOOR_PAYMENTS_URL  https://mcpgw.ai-demo.ping-devops.com/meridian-p
 ```sh
 # real-mode host run of the app (the container is mock-only):
 set -a; source <user>/.env; set +a
-PORT=6602 DEMO_MODE=real node server/src/index.js &
-curl -X POST :6602/api/flow/run -d '{"step":"sign-in"}'
-curl -X POST :6602/api/flow/sign-in-submit -d '{"username":"jordan.ellis","password":"…"}'
-curl -X POST :6602/api/flow/run -d '{"step":"external-agent"}'
-curl -X POST :6602/api/flow/run -d '{"step":"third-party-exchange"}'
-curl -X POST :6602/api/flow/run -d '{"step":"concierge-decides"}'
-curl -X POST :6602/api/flow/run -d '{"step":"exchange-payouts"}'
-curl -X POST :6602/api/flow/run -d '{"step":"mcp-payouts"}'          # expect 200 + records
-curl -X POST :6602/api/flow/run -d '{"step":"mcp-payouts","overrides":{"body":{"door":"meridian-payments"}}}'  # 403 H-7
-curl -X POST :6602/api/flow/run -d '{"step":"mcp-payouts","overrides":{"tool":"take_guest_payment"}}'          # 403 H-5
+PORT=7722 DEMO_MODE=real node server/src/index.js &
+curl -X POST :7722/api/flow/run -d '{"step":"sign-in"}'
+curl -X POST :7722/api/flow/sign-in-submit -d '{"username":"jordan.ellis","password":"…"}'
+curl -X POST :7722/api/flow/run -d '{"step":"external-agent"}'
+curl -X POST :7722/api/flow/run -d '{"step":"third-party-exchange"}'
+curl -X POST :7722/api/flow/run -d '{"step":"concierge-decides"}'
+curl -X POST :7722/api/flow/run -d '{"step":"exchange-payouts"}'
+curl -X POST :7722/api/flow/run -d '{"step":"mcp-payouts"}'          # expect 200 + records
+curl -X POST :7722/api/flow/run -d '{"step":"mcp-payouts","overrides":{"body":{"door":"meridian-payments"}}}'  # 403 H-7
+curl -X POST :7722/api/flow/run -d '{"step":"mcp-payouts","overrides":{"tool":"take_guest_payment"}}'          # 403 H-5
 ```
 
 ## 8. Open decisions for the script's design

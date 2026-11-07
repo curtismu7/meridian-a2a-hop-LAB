@@ -3,11 +3,11 @@
   "name": "Meridian Pay A2A hop lab",
   "kind": "Demo",
   "description": "Walk a delegated agent token chain one hop at a time: sign in, hand the job to a platform-signed external agent, exchange tokens (RFC 8693, third-party subject and actor), and call MCP tools through Privilege doors. Every hop shows sub/act/aud/scope, and refusals are demoed on purpose. Runs…",
-  "url": "http://127.0.0.1:6600",
+  "url": "http://127.0.0.1:7720",
   "healthPath": "/api/health",
   "composeFile": "docker-compose.yml",
   "composeOverlays": [],
-  "port": 6600,
-  "notes": "Host-run: npm install && npm run build && npm start (port 6600, loopback only; mock mode needs no settings). Docker: docker compose up --build -d (publishes 127.0.0.1:6600 only). Catalog id D110 (A2A delegation walkthrough).",
+  "port": 7720,
+  "notes": "Host-run: npm install && npm run build && npm start (port 7720, loopback only; mock mode needs no settings). Docker: docker compose up --build -d (publishes 127.0.0.1:7720 only). Catalog id D110 (A2A delegation walkthrough).",
   "catalogId": "D110"
 }

@@ -12,7 +12,7 @@
     "id": "meridian-a2a-hop",
     "name": "Meridian Pay A2A hop lab",
     "catalog": "D110",
-    "baseUrl": "http://127.0.0.1:6600",
+    "baseUrl": "http://127.0.0.1:7720",
     "doctor": "/api/health",
     "tags": [
       "a2a",

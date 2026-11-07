@@ -12,7 +12,7 @@ RUN npm run build -w web
 FROM node:26-alpine
 WORKDIR /app
 # HOST=0.0.0.0 is inside the container only; docker-compose.yml publishes the port on 127.0.0.1 and sets LAB_PUBLISH=loopback.
-ENV NODE_ENV=production PORT=6600 HOST=0.0.0.0
+ENV NODE_ENV=production PORT=7720 HOST=0.0.0.0
 COPY package.json package-lock.json ./
 COPY web/package.json web/
 COPY server/package.json server/
@@ -21,5 +21,5 @@ COPY server/src server/src
 COPY stub-issuer stub-issuer
 COPY --from=build /app/web/dist web/dist
 USER node
-EXPOSE 6600
+EXPOSE 7720
 CMD ["node", "server/src/index.js"]

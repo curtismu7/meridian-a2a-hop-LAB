@@ -104,7 +104,7 @@ export function createRealFlow({ netguard }) {
       const opened = await getPingOne().openFlow({
         clientId: C('WEB'),
         clientSecret: S('WEB'),
-        redirectUri: process.env.MERIDIAN_WEB_REDIRECT_URI || 'http://127.0.0.1:6600/api/auth/callback',
+        redirectUri: process.env.MERIDIAN_WEB_REDIRECT_URI || 'http://127.0.0.1:7720/api/auth/callback',
         loginHint: process.env.MERIDIAN_USER_USERNAME || 'jordan.ellis',
       })
       if (!opened.flow?.id) return { ok: false, step: stepId, status: opened.status, response: opened.flow }
@@ -209,7 +209,7 @@ export function createRealFlow({ netguard }) {
     const exchanged = await getPingOne().exchangeCode({
       code: resume.code,
       codeVerifier: state.piFlow.codeVerifier,
-      redirectUri: process.env.MERIDIAN_WEB_REDIRECT_URI || 'http://127.0.0.1:6600/api/auth/callback',
+      redirectUri: process.env.MERIDIAN_WEB_REDIRECT_URI || 'http://127.0.0.1:7720/api/auth/callback',
       clientId: C('WEB'),
       clientSecret: S('WEB'),
     })
