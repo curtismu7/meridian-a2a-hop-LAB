@@ -55,6 +55,12 @@ export function createApp() {
     res.json(await netguard.selfTest())
   })
 
+  // The header "Shelf" button. Registered unconditionally: it used to sit inside the web-build check below, so it was missing whenever web/dist was absent.
+  app.get('/api/shelf', (_req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json(shelfInfo())
+  })
+
   app.get('/api/info', (_req, res) => {
     const realConfigured = Boolean(
       process.env.MERIDIAN_PINGONE_ENV_ID &&
@@ -127,7 +133,6 @@ export function createApp() {
   // Static hosting: the built web app, with the API routes taking precedence.
   const dist = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../web/dist')
   if (existsSync(dist)) {
-app.get('/api/shelf', (_req, res) => { res.set('Cache-Control', 'no-store'); res.json(shelfInfo()); }); // the header "Shelf" button
     app.use(express.static(dist))
     app.get(/^\/(?!api\/).*/, (_req, res) => res.sendFile(path.join(dist, 'index.html')))
   }
