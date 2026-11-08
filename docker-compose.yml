@@ -8,7 +8,7 @@ services:
     ports:
       - "127.0.0.1:${HOST_PORT:-7720}:7720"
     environment:
-      SHELF_URL: ${SHELF_URL:-}
+      SHELF_URL: ${SHELF_URL:-http://127.0.0.1:4400}
       PORT: "7720"
       DEMO_MODE: ${DEMO_MODE:-mock}
       # Mock sign-in (rule 11) is allowed here because the port above is published on 127.0.0.1 only; LAB_PUBLISH says so.

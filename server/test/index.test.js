@@ -16,4 +16,18 @@ describe('scaffold', () => {
     expect(res.body.mode).toBe('mock')
     expect(res.body.banner).toMatch(/Simulation/)
   })
+
+  it('shelf: /api/shelf returns SHELF_URL (slash trimmed) with no web build, and POST is not 200', async () => {
+    const prev = process.env.SHELF_URL
+    process.env.SHELF_URL = 'https://shelf.example:8443/'
+    try {
+      const res = await request(createApp()).get('/api/shelf')
+      expect(res.status).toBe(200)
+      expect(res.body).toEqual({ shelfUrl: 'https://shelf.example:8443' })
+      expect((await request(createApp()).post('/api/shelf').send({})).status).not.toBe(200)
+    } finally {
+      if (prev === undefined) delete process.env.SHELF_URL
+      else process.env.SHELF_URL = prev
+    }
+  })
 })
