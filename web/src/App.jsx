@@ -8,6 +8,9 @@ import Hop from './Hop.jsx'
 import SignInForm from './SignInForm.jsx'
 import CapturedTokens from './CapturedTokens.jsx'
 import ShelfLink from "./components/ShelfLink.jsx";
+// Opened from Customer Agent LAB (UC2.5 routes here): strip + header Back only. This lab is one fixed walkthrough with no scenario or
+// vertical to preselect, so nothing else changes.
+import ReturnLink from "./return-link/ReturnLink.jsx";
 
 const THEME_KEY = "ma2a.theme";
 const THEMES = [["auto", "Auto"], ["light", "Light"], ["dark", "Dark"]];
@@ -153,9 +156,11 @@ export default function App() {
         <button type="button" className="mode-btn" onClick={togglePresenter}>
           Presenter {presenter ? 'on' : 'off'}
         </button>
+        <ReturnLink app="meridian-a2a-hop" variant="header" />
       </header>
 
       <section className="banner simulation">{fillCast(info?.banner || 'Simulation: every issuer, door and tool on this page is local. Nothing leaves this machine.')}</section>
+      <ReturnLink app="meridian-a2a-hop" />
 
       {error && (
         <div className="banner error" role="alert">
