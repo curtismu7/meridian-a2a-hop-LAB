@@ -14,6 +14,10 @@ describe('return link', () => {
     render(<App />)
     expect(screen.getByRole('note', { name: 'Opened from Customer Agent LAB' }).textContent).toContain('UC2.5')
     expect(screen.getAllByRole('button', { name: /Back to Customer Agent LAB/ })).toHaveLength(2)
+    const strip = screen.getByRole('note', { name: 'Opened from Customer Agent LAB' })
+    expect(strip.previousElementSibling).toHaveClass('banner') // banner first, strip right below
+    const headerBack = document.querySelector('header.topbar > button.return-link--header')
+    expect(headerBack).not.toBeNull() // in the shell bar's actions, not inside the title block
   })
 
   it('no from, an unknown from or a bad id: no strip, no button', () => {

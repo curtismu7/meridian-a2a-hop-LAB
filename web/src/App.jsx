@@ -123,13 +123,11 @@ export default function App() {
 
   return (
     <main className="shell">
-      <ReturnLink app="meridian-a2a-hop" />
       <header className="topbar">
         <span className="logo">wpt</span>
         <div>
           <h1>Meridian Pay A2A, one hop at a time</h1>
         <ShelfLink />
-        <ReturnLink app="meridian-a2a-hop" variant="header" />
           <p>
             Every hop is a token exchange and a call through a Privilege door. Each form is prefilled from the
             step before it; change any value before you send.
@@ -158,9 +156,11 @@ export default function App() {
         <button type="button" className="mode-btn" onClick={togglePresenter}>
           Presenter {presenter ? 'on' : 'off'}
         </button>
+        <ReturnLink app="meridian-a2a-hop" variant="header" />
       </header>
 
       <section className="banner simulation">{fillCast(info?.banner || 'Simulation: every issuer, door and tool on this page is local. Nothing leaves this machine.')}</section>
+      <ReturnLink app="meridian-a2a-hop" />
 
       {error && (
         <div className="banner error" role="alert">
