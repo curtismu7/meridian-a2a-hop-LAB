@@ -15,9 +15,24 @@ tree_count=$(printf '%s' "$tree" | grep -c . || true)
 echo "tracked files with an AI-attribution credit: $tree_count"
 if [ "$tree_count" != "0" ]; then printf '%s\n' "$tree" | sed 's/^/  /'; status=1; fi
 
+# Commits made on the rule date, before this check existed. main is not rewritten, so these exact commits are skipped;
+# every other commit from the rule date on is still checked. Do not add to this list.
+known_old=(
+  916a38ce40625423d8af79376407f81f869b05c6
+  5e1ca6cc80ee07b9f6c365e6bd45eaa6c04e292d
+  a9c7e04fd95902da37e2468559c3c5f9bb9d2b16
+  9e2541caefe34f049c0d9fe433aac14ff997dbc0
+  4d49d2bb5766c730cab8ad3c2fe5b06dc187d06a
+  35708386d7e5eef3c371bef06906d0445dfe8c74
+)
+
+self_coauthor='^[C]o-authored-by:[^<]*<([0-9]+\+)?curtismu7@users\.noreply\.github\.com>[[:space:]]*$'
 bad=0
 for h in $(git log --all --since="$rule_date" --format=%H 2>/dev/null); do
-  if git log -1 --format=%B "$h" | grep -qiE "$pat"; then bad=$((bad+1)); echo "  commit ${h:0:7}"; fi
+  case " ${known_old[*]} " in *" $h "*) continue ;; esac
+  # A co-author trailer naming the owner's own GitHub noreply address is not an AI credit: GitHub's squash merge adds one when
+  # a commit's author name differs from the profile name. A trailer naming anyone else (e.g. an AI) still fails.
+  if git log -1 --format=%B "$h" | grep -viE "$self_coauthor" | grep -qiE "$pat"; then bad=$((bad+1)); echo "  commit ${h:0:7}"; fi
 done
 echo "commits since $rule_date with an AI-attribution credit: $bad"
 [ "$bad" != "0" ] && status=1
