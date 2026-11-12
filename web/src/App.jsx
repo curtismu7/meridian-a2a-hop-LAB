@@ -8,12 +8,15 @@ import Hop from './Hop.jsx'
 import SignInForm from './SignInForm.jsx'
 import CapturedTokens from './CapturedTokens.jsx'
 import ShelfLink from "./components/ShelfLink.jsx";
+import TopMenu, { applyFontSize } from './top-menu/TopMenu.jsx'
 // Opened from Customer Agent LAB (UC2.5 routes here): strip + header Back only. This lab is one fixed walkthrough with no scenario or
 // vertical to preselect, so nothing else changes.
 import ReturnLink from "./return-link/ReturnLink.jsx";
 
+import fs from 'node:fs'
+const LAB_VERSION = (() => { try { return JSON.parse(fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf8')).version || null; } catch { return null; } })()
+
 const THEME_KEY = "ma2a.theme";
-const THEMES = [["auto", "Auto"], ["light", "Light"], ["dark", "Dark"]];
 function initialTheme() {
   try { const t = localStorage.getItem(THEME_KEY); if (t === "light" || t === "dark") return t; } catch { /* storage blocked */ }
   return "auto";
@@ -22,8 +25,10 @@ function initialTheme() {
 export default function App() {
   const [info, setInfo] = useState(null)
   const [theme, setTheme] = useState(initialTheme)
+  const [fontStep, setFontStep] = useState(() => { try { const f = localStorage.getItem("ma2a.font"); return ["S", "M", "L"].includes(f) ? f : "M"; } catch { return "M"; } })
 
   useEffect(() => { if (theme === "auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = theme; }, [theme])
+  useEffect(() => { applyFontSize(fontStep); try { localStorage.setItem("ma2a.font", fontStep); } catch { /* not remembered */ } }, [fontStep])
 
   const pickTheme = (next) => {
     try { if (next === "auto") localStorage.removeItem(THEME_KEY); else localStorage.setItem(THEME_KEY, next); } catch { /* not remembered */ }
@@ -139,23 +144,15 @@ export default function App() {
         <span className="mode-badge" data-testid="mode-badge">
           {mode === 'real' ? 'Real' : 'Mock'}
         </span>
-        <button type="button" data-testid="mode-real" className="mode-btn" onClick={() => switchMode('real')}>
-          Real
-        </button>
-        <button type="button" data-testid="mode-mock" className="mode-btn" onClick={() => switchMode('mock')}>
-          Mock
-        </button>
-        <button type="button" className="mode-btn" onClick={startOver} data-testid="start-over">
-          Start over
-        </button>
-        <label className="shell-theme">Theme
-          <select value={theme} onChange={(e) => pickTheme(e.target.value)}>
-            {THEMES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
-          </select>
-        </label>
-        <button type="button" className="mode-btn" onClick={togglePresenter}>
-          Presenter {presenter ? 'on' : 'off'}
-        </button>
+        <TopMenu
+          mode={{ value: mode, onChange: switchMode, realAvailable: info ? info.realAvailable : null }}
+          theme={{ value: theme, onChange: pickTheme }}
+          fontSize={{ value: fontStep, onChange: setFontStep }}
+          present={{ active: presenter, onToggle: togglePresenter }}
+          help={{ href: 'https://github.com/curtismu7/meridian-a2a-hop-LAB#readme' }}
+          version={LAB_VERSION}
+          onReset={startOver}
+        />
         <ReturnLink app="meridian-a2a-hop" variant="header" />
       </header>
 

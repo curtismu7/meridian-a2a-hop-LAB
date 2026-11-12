@@ -9,7 +9,8 @@ body {
 }
 .shell { max-width: 1280px; margin: 0 auto; padding: 16px; }
 
-.topbar { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+.topbar { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; position: relative; }
+html { font-size: var(--fs, 16px); }
 .logo {
   background: var(--accent);
   color: var(--on-accent);
