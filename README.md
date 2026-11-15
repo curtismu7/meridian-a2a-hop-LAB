@@ -78,3 +78,13 @@ Docker (OrbStack): `docker compose up --build -d` - publishes `127.0.0.1:7720` o
 `~/Development/STANDALONE-RULES.md` (Demo tier): mock mode fully offline with an honest
 banner, tokens shown raw, secrets write-only server-side, loopback-only bind, Node 26,
 GitHub-hosted CI, no cross-repo imports.
+
+---
+
+## Real mode: through the PingOne Privilege gateway
+
+**Privilege objects this lab uses:** the gateway doors `meridian-payments/mcp` and `meridian-payouts/mcp` (`MERIDIAN_MCP_DOOR_*`), walked one delegated-token hop at a time
+
+Settings keys: `MERIDIAN_GW_URL`, `MERIDIAN_GW_APPS`, at least one `MERIDIAN_GW_KEY_<NAME>`
+in the shared settings file (`~/Development/.env`, or the file `STANDALONE_ENV` names). The key
+is write-only: it is scrubbed from every message, error and log line.
