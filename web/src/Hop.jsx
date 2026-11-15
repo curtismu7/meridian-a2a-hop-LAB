@@ -1,6 +1,10 @@
 // One hop: explainer, request editor (placeholders prefilled; secrets stay server-side), Send, response tabs.
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { fillCast } from './cast.js'
+import Json from './components/JsonPane.jsx'
+
+// Keys that matter in this lab's payloads (the shared defaults - sub, act, aud, scope, grant_type, tokens - are already hot).
+const HOT = ['door', 'tool', 'audience', 'subject_token_type', 'actor_token_type']
 
 export default function Hop({ step, state, onSend }) {
   const [tab, setTab] = useState('result')
@@ -8,8 +12,6 @@ export default function Hop({ step, state, onSend }) {
   const response = state?.response
   const refused = state?.refused
   const result = state?.result
-
-  const bodyText = useMemo(() => (request?.body ? JSON.stringify(request.body, null, 2) : ''), [request])
 
   return (
     <section className="hop" data-testid={`hop-${step.id}`}>
@@ -49,7 +51,7 @@ export default function Hop({ step, state, onSend }) {
               <input value={typeof v === 'string' ? v : JSON.stringify(v)} readOnly aria-label="Header value" />
             </div>
           ))}
-          {bodyText && <textarea value={bodyText} readOnly rows={Math.min(12, bodyText.split('\n').length)} aria-label="Body" />}
+          {request.body && <Json value={request.body} label="Request body" hot={HOT} />}
           <button type="button" className="send" onClick={() => onSend(step)} data-testid={`send-${step.id}`}>
             Send
           </button>
@@ -68,17 +70,9 @@ export default function Hop({ step, state, onSend }) {
             {refused && <span className="status bad">{refused.status}</span>}
             {result?.status === 200 && <span className="status ok">200</span>}
           </div>
-          {tab === 'result' && (
-            <pre data-testid={`result-${step.id}`}>
-              {refused
-                ? `REFUSED (${refused.status} ${refused.error})\n\n${refused.reason}`
-                : result
-                  ? JSON.stringify(result, null, 2)
-                  : JSON.stringify(response, null, 2)}
-            </pre>
-          )}
-          {tab === 'tokens' && <pre>{state?.tokenView ?? 'No token captured on this hop.'}</pre>}
-          {tab === 'request' && <pre>{JSON.stringify(request, null, 2)}</pre>}
+          {tab === 'result' && <Json value={refused ?? result ?? response} label={refused ? 'Refused' : 'Result'} testId={`result-${step.id}`} hot={HOT} />}
+          {tab === 'tokens' && <Json value={state?.tokenView ?? 'No token captured on this hop.'} label="Tokens" />}
+          {tab === 'request' && <Json value={request} label="Request" hot={HOT} />}
         </div>
       )}
     </section>
