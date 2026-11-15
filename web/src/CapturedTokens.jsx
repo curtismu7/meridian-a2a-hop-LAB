@@ -1,4 +1,6 @@
 // Captured tokens panel: one chip per hop, raw + decoded sub/act, what changed.
+import Json from './components/JsonPane.jsx'
+
 export default function CapturedTokens({ tokens }) {
   return (
     <aside className="captured" data-testid="captured-tokens">
@@ -10,25 +12,14 @@ export default function CapturedTokens({ tokens }) {
             <span className="hopnum">{t.hop}</span> {t.label}
             {t.decoded?.act && <span className="act">act</span>}
           </summary>
-          <dl>
-            <dt>sub</dt>
-            <dd>{t.decoded?.sub}</dd>
-            <dt>aud</dt>
-            <dd>{t.decoded?.aud}</dd>
-            <dt>scope</dt>
-            <dd>{t.decoded?.scope || '—'}</dd>
-            <dt>client_id</dt>
-            <dd>{t.decoded?.client_id || '—'}</dd>
-            <dt>act</dt>
-            <dd>{t.decoded?.act ? JSON.stringify(t.decoded.act) : '—'}</dd>
-            {t.changed?.length > 0 && (
-              <>
-                <dt>changed</dt>
-                <dd className="changed">{t.changed.join(', ')}</dd>
-              </>
-            )}
-          </dl>
-          <textarea readOnly value={t.raw} rows={4} aria-label={`raw token ${t.hop}`} />
+          {t.decoded && <Json value={t.decoded} label={`Token ${t.hop} claims`} />}
+          {t.changed?.length > 0 && (
+            <dl>
+              <dt>changed</dt>
+              <dd className="changed">{t.changed.join(', ')}</dd>
+            </dl>
+          )}
+          <Json value={t.raw} label={`Raw token ${t.hop}`} />
         </details>
       ))}
     </aside>

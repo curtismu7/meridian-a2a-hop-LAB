@@ -5,6 +5,7 @@ import '@fontsource/montserrat/600.css'
 import '@fontsource/ibm-plex-mono/400.css'
 import './standalone-ui.css'
 import './top-menu/top-menu.css'
+import './components/JsonPane.css'
 import './styles.css'
 import App from './App.jsx'
 

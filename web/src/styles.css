@@ -112,7 +112,7 @@ button.primary {
 
 .request { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
 .req-row { display: flex; gap: 6px; }
-.req-row select, .req-row input, textarea {
+.req-row select, .req-row input {
   background: var(--surface-2);
   border: 1px solid var(--border);
   color: var(--text);
@@ -123,7 +123,6 @@ button.primary {
   width: 100%;
 }
 .req-row select { width: 90px; }
-textarea { resize: vertical; }
 .send {
   align-self: flex-start;
   background: var(--accent);
@@ -153,14 +152,6 @@ textarea { resize: vertical; }
 .status { margin-left: auto; font-size: 12px; font-weight: 600; }
 .status.ok { color: var(--status-ok); }
 .status.bad { color: var(--danger-text); }
-.response pre {
-  margin: 0;
-  padding: 10px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  overflow: auto;
-  max-height: 320px;
-}
 
 .captured { margin-top: 16px; }
 .captured h3 { font-size: 12px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.08em; }
