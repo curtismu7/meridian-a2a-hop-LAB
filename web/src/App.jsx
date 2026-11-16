@@ -127,22 +127,20 @@ export default function App() {
   const diagramStepIndex = state[current] != null ? (HOP_TO_DIAGRAM_STEP[current] ?? null) : null
 
   return (
-    <main className="shell">
-      <header className="topbar">
-        <span className="logo">wpt</span>
-        <div>
+    <div className="shell">
+      <header className="shell-bar">
+        <span className="shell-brand">
+          <span className="shell-logo" aria-hidden="true">wpt</span>
           <h1>Meridian Pay A2A, one hop at a time</h1>
-        <ShelfLink />
-          <p>
-            Every hop is a token exchange and a call through a Privilege door. Each form is prefilled from the
-            step before it; change any value before you send.
-          </p>
-        </div>
-        <span className="who" data-testid="who">
-          {tokens.length > 0 ? `${fillCast('Jordan Ellis')} · signed in` : 'not signed in'}
+          <span className={mode === 'real' ? 'shell-badge shell-badge--real' : 'shell-badge'} data-testid="mode-badge">
+            {mode === 'real' ? 'Real' : 'Mock'}
+          </span>
         </span>
-        <span className="mode-badge" data-testid="mode-badge">
-          {mode === 'real' ? 'Real' : 'Mock'}
+        <nav className="shell-nav" aria-label="Pages">
+          <a href="#main" aria-current="page">Hop walkthrough</a>
+        </nav>
+        <span className="shell-who" data-testid="who">
+          {tokens.length > 0 ? `${fillCast('Jordan Ellis')} · signed in` : 'not signed in'}
         </span>
         <TopMenu
           mode={{ value: mode, onChange: switchMode, realAvailable: info ? info.realAvailable : null }}
@@ -152,18 +150,25 @@ export default function App() {
           help={{ href: 'https://github.com/curtismu7/meridian-a2a-hop-LAB#readme' }}
           version={LAB_VERSION}
           onReset={startOver}
-        />
-        <ReturnLink app="meridian-a2a-hop" variant="header" />
+        >
+          <ShelfLink />
+          <ReturnLink app="meridian-a2a-hop" variant="header" />
+        </TopMenu>
       </header>
 
+      <main className="page" id="main" tabIndex={-1}>
       <section className="banner simulation">{fillCast(info?.banner || 'Simulation: every issuer, door and tool on this page is local. Nothing leaves this machine.')}</section>
       <ReturnLink app="meridian-a2a-hop" />
-
       {error && (
         <div className="banner error" role="alert">
           {error}
         </div>
       )}
+
+      <p className="lede">
+        Every hop is a token exchange and a call through a Privilege door. Each form is prefilled from the
+        step before it; change any value before you send.
+      </p>
 
       <DiagramView id={DIAGRAM_IDS[0]} stepIndex={diagramStepIndex} />
 
@@ -208,7 +213,8 @@ export default function App() {
           {current === 'delegation-chain' && <DelegationChain tokens={tokens} />}
         </div>
       </div>
-    </main>
+      </main>
+    </div>
   )
 }
 
