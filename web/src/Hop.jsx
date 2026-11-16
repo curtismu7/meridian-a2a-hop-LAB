@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { fillCast } from './cast.js'
 import Json from './components/JsonPane.jsx'
+import GatewayTrace from './gateway-trace/GatewayTrace.jsx'
 
 // Keys that matter in this lab's payloads (the shared defaults - sub, act, aud, scope, grant_type, tokens - are already hot).
 const HOT = ['door', 'tool', 'audience', 'subject_token_type', 'actor_token_type']
@@ -74,6 +75,13 @@ export default function Hop({ step, state, onSend }) {
           {tab === 'tokens' && <Json value={state?.tokenView ?? 'No token captured on this hop.'} label="Tokens" />}
           {tab === 'request' && <Json value={request} label="Request" hot={HOT} />}
         </div>
+      )}
+
+      {state?.gatewayTrace?.length > 0 && <GatewayTrace exchanges={state.gatewayTrace} source={state.gatewayTrace[0].trace.source} />}
+      {state?.traceNote && !state?.gatewayTrace && (
+        <p className="hop-blurb" data-testid="gateway-trace-note">
+          <strong>What Privilege did:</strong> {state.traceNote}
+        </p>
       )}
     </section>
   )

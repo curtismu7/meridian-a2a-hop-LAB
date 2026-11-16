@@ -3,6 +3,8 @@
 import { createPingOne } from '../pingone.js'
 import { createDoors } from '../../../stub-issuer/doors.mjs' // reuse the same required-claims policy checks on real tokens
 import { createKeys } from '../../../stub-issuer/keys.mjs'
+import { realDoorExchange, failedDoorExchange } from '../doorTrace.js'
+import { stepById } from './steps.js'
 
 const ISSUER = 'https://issuer.meridian.example' // only used to label mock tokens; real tokens carry PingOne iss
 
@@ -164,21 +166,33 @@ export function createRealFlow({ netguard }) {
       const token = body.token ? resolveTokenRef(body.token) : state.tokens.payouts
       if (!token) return { ok: false, step: stepId, status: 400, response: { error: 'no_payouts_token', error_description: 'Exchange for payouts first.' } }
       const doorCheck = doors.checkDoorReal(doorId, token, body.tool || overrides.tool || 'query_account_payouts')
-      if (doorCheck) return { ok: true, step: stepId, refused: doorCheck }
+      // Nothing below this line is sent to the gateway when this lab refuses first or no door URL is set: no trace, and the page says why.
+      if (doorCheck) return { ok: true, step: stepId, refused: doorCheck, traceNote: "This lab's own claim check refused the call before anything was sent to the gateway, so the gateway did nothing here." }
       // Live door: POST the tools/call to the configured Privilege door URL. Until doors are registered,
       // return the tool result from the local backends and say so (honest banner covers mode).
       const doorUrl = process.env.MERIDIAN_MCP_DOOR_PAYOUTS_URL
       if (!doorUrl) {
         const { createBackends } = await import('../../../stub-issuer/backends.mjs')
         if (!state.backends) state.backends = createBackends()
-        return { ok: true, step: stepId, result: { status: 200, payouts: state.backends.queryAccountPayouts(overrides.arguments || { pageSize: 5 }), via: 'local backends (doors not registered yet)' } }
+        return { ok: true, step: stepId, result: { status: 200, payouts: state.backends.queryAccountPayouts(overrides.arguments || { pageSize: 5 }), via: 'local backends (doors not registered yet)' }, traceNote: 'No door URL is set, so the lab answered from its local backends and nothing was sent to the gateway.' }
       }
-      const res = await netguard.fetchImpl(doorUrl, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
-        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: overrides.tool || 'query_account_payouts', arguments: overrides.arguments || { pageSize: 5 } } }),
-      })
-      return { ok: res.status < 400, step: stepId, status: res.status, response: await res.json().catch(() => ({})) }
+      const rpc = { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: overrides.tool || 'query_account_payouts', arguments: overrides.arguments || { pageSize: 5 } } }
+      const traceStep = stepById(stepId)
+      let res
+      let text
+      try {
+        res = await netguard.fetchImpl(doorUrl, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
+          body: JSON.stringify(rpc),
+        })
+        text = await res.text()
+      } catch (error) {
+        return { ok: false, step: stepId, status: 502, response: { error: 'door_unreachable', error_description: 'The call to the door did not complete.' }, gatewayTrace: [failedDoorExchange({ step: traceStep, url: doorUrl, token, rpc, error })] }
+      }
+      let response
+      try { response = JSON.parse(text) } catch { response = {} }
+      return { ok: res.status < 400, step: stepId, status: res.status, response, gatewayTrace: [realDoorExchange({ step: traceStep, url: doorUrl, token, rpc, res, text })] }
     }
 
     return { ok: false, status: 404, error: 'unknown_step' }

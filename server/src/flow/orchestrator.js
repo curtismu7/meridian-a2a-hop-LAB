@@ -7,6 +7,7 @@ import { createBackends } from '../../../stub-issuer/backends.mjs'
 import { resolvePlaceholders } from './placeholders.js'
 import { decide } from './router.js'
 import { STEPS, stepById } from './steps.js'
+import { mockDoorExchange } from '../doorTrace.js'
 
 export function createFlow() {
   const issuer = createIssuer()
@@ -123,12 +124,18 @@ export function createFlow() {
 
     if (stepId === 'mcp-payouts') {
       const body = resolvePlaceholders(overrides.body ?? step.request.body, { ...ctx(), tokens: state.tokens ?? {} })
-      const doorCheck = await doors.checkDoor(body.door, body.token, body.tool)
-      if (doorCheck) return { ok: true, step: stepId, refused: doorCheck }
-      if (body.tool === 'query_account_payouts') {
-        return { ok: true, step: stepId, result: { status: 200, payouts: backends.queryAccountPayouts(body.arguments) } }
+      const detail = doors.checkDoorDetailed(body.door, body.token, body.tool)
+      const exchange = (status, answer, extra) => ({ step, doorId: body.door, token: body.token, tool: body.tool, args: body.arguments, detail, status, body: answer, extra })
+      if (detail.refusal) {
+        return { ok: true, step: stepId, refused: detail.refusal, gatewayTrace: [mockDoorExchange(exchange(detail.refusal.status, detail.refusal))] }
       }
-      return { ok: true, step: stepId, refused: { status: 403, error: 'tool_not_allowed', reason: `The policy lists only this specialist's tools, and ${body.tool} is not one.` } }
+      if (body.tool === 'query_account_payouts') {
+        const result = { status: 200, payouts: backends.queryAccountPayouts(body.arguments) }
+        return { ok: true, step: stepId, result, gatewayTrace: [mockDoorExchange(exchange(200, result))] }
+      }
+      const refused = { status: 403, error: 'tool_not_allowed', reason: `The policy lists only this specialist's tools, and ${body.tool} is not one.` }
+      const extra = { id: 'backend', label: "Specialist's backend serves the call", outcome: 'fail', evidence: refused.reason }
+      return { ok: true, step: stepId, refused, gatewayTrace: [mockDoorExchange(exchange(403, refused, extra))] }
     }
 
     const req = resolvePlaceholders({ ...step.request, ...overrides.request }, { ...ctx(), tokens: state.tokens ?? {} })
