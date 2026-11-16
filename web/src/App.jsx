@@ -8,6 +8,7 @@ import Hop from './Hop.jsx'
 import SignInForm from './SignInForm.jsx'
 import CapturedTokens from './CapturedTokens.jsx'
 import ShelfLink from "./components/ShelfLink.jsx";
+import VerifyMark from "./components/VerifyMark.jsx";
 import TopMenu, { applyFontSize } from './top-menu/TopMenu.jsx'
 // Opened from Customer Agent LAB (UC2.5 routes here): strip + header Back only. This lab is one fixed walkthrough with no scenario or
 // vertical to preselect, so nothing else changes.
@@ -152,6 +153,7 @@ export default function App() {
           onReset={startOver}
         >
           <ShelfLink />
+          <VerifyMark id="meridian-a2a-hop" />
           <ReturnLink app="meridian-a2a-hop" variant="header" />
         </TopMenu>
       </header>
