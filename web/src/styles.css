@@ -7,14 +7,14 @@ body {
   background: var(--bg);
   color: var(--text);
 }
-.shell { padding: 0 16px 32px; }
+.shell { padding-bottom: 32px; }
 .page { max-width: 1100px; margin: 0 auto; padding: 16px 0 32px; }
 main:focus:not(:focus-visible) { outline: none; }
 
 html { font-size: var(--fs, 16px); }
 /* Shell bar (STANDALONE-UI-PATTERNS.md section 1): Core Dark in both themes, Ping Red gradient rule, full-bleed
-   (the -16px cancels the .shell gutter); wraps at 600px. position: relative anchors the TopMenu sign-in slot. */
-.shell-bar { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin: 12px -16px 0; padding: 10px 20px;
+   (the -16px cancels the body gutter); wraps at 600px. position: relative anchors the TopMenu sign-in slot. */
+.shell-bar { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin: 0 -16px; padding: 10px 20px;
   background: var(--box-dark); color: var(--on-box); border-bottom: 3px solid transparent; border-image: var(--accent-gradient) 1; }
 .shell-bar h1 { margin: 0; color: var(--on-box); font-size: 18px; }
 .shell-brand { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 10px; font-weight: 700; letter-spacing: 0.02em; }

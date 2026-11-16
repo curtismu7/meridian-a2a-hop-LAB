@@ -128,9 +128,6 @@ export default function App() {
 
   return (
     <div className="shell">
-      <section className="banner simulation">{fillCast(info?.banner || 'Simulation: every issuer, door and tool on this page is local. Nothing leaves this machine.')}</section>
-      <ReturnLink app="meridian-a2a-hop" />
-
       <header className="shell-bar">
         <span className="shell-brand">
           <span className="shell-logo" aria-hidden="true">wpt</span>
@@ -160,16 +157,18 @@ export default function App() {
       </header>
 
       <main className="page" id="main" tabIndex={-1}>
-      <p className="lede">
-        Every hop is a token exchange and a call through a Privilege door. Each form is prefilled from the
-        step before it; change any value before you send.
-      </p>
-
+      <section className="banner simulation">{fillCast(info?.banner || 'Simulation: every issuer, door and tool on this page is local. Nothing leaves this machine.')}</section>
+      <ReturnLink app="meridian-a2a-hop" />
       {error && (
         <div className="banner error" role="alert">
           {error}
         </div>
       )}
+
+      <p className="lede">
+        Every hop is a token exchange and a call through a Privilege door. Each form is prefilled from the
+        step before it; change any value before you send.
+      </p>
 
       <DiagramView id={DIAGRAM_IDS[0]} stepIndex={diagramStepIndex} />
 
