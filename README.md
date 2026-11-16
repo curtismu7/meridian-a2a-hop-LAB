@@ -8,7 +8,9 @@ Walk a delegated agent token chain **one hop at a time**: sign in, hand the job 
 external agent, exchange tokens (RFC 8693), and call MCP tools through Privilege doors.
 Every hop shows the token it carried - `sub`, `act`, `aud`, `scope` - and what the next
 exchange changed. Refusals are part of the demo: each step lists the wrong way to call
-and what the platform answers.
+and what the platform answers. The door hop also shows **What Privilege did** (rule 25): the exact
+request, the exact response, and the decisions between them (the simulated door's checks in mock; a
+real gateway's answer marked inferred in real).
 
 Fictional brand: **Meridian Pay**, a payouts platform. Person **Jordan Ellis** asks a
 concierge agent about payouts; specialists (`meridian-payouts`, `meridian-payments`)

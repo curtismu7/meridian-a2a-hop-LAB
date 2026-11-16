@@ -15,3 +15,11 @@ the default and must be fully offline; real mode (PingOne + Privilege) is owner-
 - Privilege OBO limitation (state it honestly in UI copy): no actor_token option, MCP-config only - the
   external agent's actor chain is established at PingOne token exchange, then the resulting token goes
   through the doors.
+- "What Privilege did" (rule 25) on the door hop (`mcp-payouts`): `web/src/gateway-trace/` and `server/src/gatewayTrace.js` are
+  vendored byte for byte from AI-DEMO-Standalone `shared/gateway-trace` and pinned by `gateway-trace.sha256` (never hand-edit;
+  re-vendor, re-pin; the server copy is `gatewayTrace.js`, never `trace.js`). `server/src/doorTrace.js` builds the records and the run
+  reply carries them as `gatewayTrace` (`traceNote` instead when nothing went to the gateway). Mock: the simulated door
+  (`stub-issuer/doors.mjs` `checkDoorDetailed`) computed each check, so decisions are `checked`. Real: the gateway reports no per-check
+  detail, so decisions are `inferred` or `observed`, never `checked`; the lab's own claim pre-check and the local-backends fallback send
+  nothing to the gateway and have no trace. The token is never in a trace (mock: shortened, real: length only). The wording is about a
+  delegated call between agents, via the builder's `grant` option.
