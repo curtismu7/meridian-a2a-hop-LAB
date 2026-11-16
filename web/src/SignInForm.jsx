@@ -21,10 +21,10 @@ export default function SignInForm({ flowStatus, demoUser, onSubmit }) {
         }}
       >
         <div className="req-row">
-          <input name="username" placeholder="Username" defaultValue={demoUser} autoComplete="username" />
+          <input name="username" aria-label="Username" placeholder="Username" defaultValue={demoUser} autoComplete="username" />
         </div>
         <div className="req-row">
-          <input name="password" type="password" placeholder="Password" autoComplete="current-password" />
+          <input name="password" type="password" aria-label="Password" placeholder="Password" autoComplete="current-password" />
         </div>
         <button type="submit" className="send">
           Sign in

@@ -7,27 +7,28 @@ body {
   background: var(--bg);
   color: var(--text);
 }
-.shell { max-width: 1280px; margin: 0 auto; padding: 16px; }
+.shell { padding: 0 16px 32px; }
+.page { max-width: 1100px; margin: 0 auto; padding: 16px 0 32px; }
+main:focus:not(:focus-visible) { outline: none; }
 
-.topbar { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; position: relative; }
 html { font-size: var(--fs, 16px); }
-.logo {
-  background: var(--accent);
-  color: var(--on-accent);
-  font-weight: 600;
-  border-radius: 8px;
-  padding: 8px 10px;
-}
-.topbar h1 { font-size: 18px; margin: 0 0 4px; }
-.topbar p { margin: 0; color: var(--muted); font-size: 13px; max-width: 620px; }
-.who { color: var(--muted); font-size: 12px; align-self: center; }
-.mode-badge {
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 4px 12px;
-  font-size: 12px;
-  align-self: center;
-}
+/* Shell bar (STANDALONE-UI-PATTERNS.md section 1): Core Dark in both themes, Ping Red gradient rule, full-bleed
+   (the -16px cancels the .shell gutter); wraps at 600px. position: relative anchors the TopMenu sign-in slot. */
+.shell-bar { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin: 12px -16px 0; padding: 10px 20px;
+  background: var(--box-dark); color: var(--on-box); border-bottom: 3px solid transparent; border-image: var(--accent-gradient) 1; }
+.shell-bar h1 { margin: 0; color: var(--on-box); font-size: 18px; }
+.shell-brand { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 10px; font-weight: 700; letter-spacing: 0.02em; }
+.shell-logo { display: inline-grid; place-items: center; min-width: 30px; height: 30px; padding: 0 6px; border-radius: 4px; background: var(--accent-gradient); color: var(--on-accent); font-weight: 800; font-size: 12px; }
+.shell-badge { padding: 2px 10px; border-radius: 999px; border: 1px solid transparent; background: var(--accent-gradient); color: var(--on-accent); font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.shell-badge--real { background: var(--surface-2); color: var(--status-warn); border-color: var(--status-warn); }
+.shell-nav { display: flex; flex-wrap: wrap; gap: 4px; flex: 1 1 auto; }
+.shell-nav a { padding: 5px 12px; border-radius: 999px; border: 1px solid var(--on-accent-border); color: var(--on-box); text-decoration: none; font-size: 13px; font-weight: 500; }
+.shell-nav a:hover { background: var(--box-grey); }
+.shell-nav a[aria-current="page"] { background: var(--accent-gradient); border-color: transparent; color: var(--on-accent); font-weight: 700; }
+.shell-who { color: var(--on-box); font-size: 12px; }
+.shell-bar .top-menu { margin-left: auto; }
+@media (max-width: 600px) { .shell-bar { gap: 10px; padding: 10px 16px; } .shell-nav { order: 3; flex-basis: 100%; } }
+.lede { margin: 12px 0 0; color: var(--muted); font-size: 13px; max-width: 620px; }
 .mode-btn {
   border: 1px solid var(--border);
   background: var(--surface-2);
@@ -40,16 +41,6 @@ html { font-size: var(--fs, 16px); }
 }
 .mode-btn:hover { border-color: var(--accent); }
 .mode-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-button.primary {
-  background: var(--accent);
-  border: none;
-  color: var(--on-accent);
-  font-weight: 600;
-  border-radius: 6px;
-  padding: 6px 14px;
-  cursor: pointer;
-  font-family: inherit;
-}
 
 .banner {
   margin-top: 12px;
@@ -194,7 +185,7 @@ th { color: var(--muted); font-weight: 600; }
 
 /* Presenter mode: bigger type for a second screen */
 html.presenter { font-size: 18px; }
-html.presenter .hop-blurb, html.presenter .topbar p { font-size: 15px; }
+html.presenter .hop-blurb, html.presenter .lede { font-size: 15px; }
 
 .shell-theme { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text); }
 .shell-theme select { min-height: 32px; padding: 4px 8px; }

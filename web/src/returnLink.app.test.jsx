@@ -16,7 +16,7 @@ describe('return link', () => {
     expect(screen.getAllByRole('button', { name: /Back to Customer Agent LAB/ })).toHaveLength(2)
     const strip = screen.getByRole('note', { name: 'Opened from Customer Agent LAB' })
     expect(strip.previousElementSibling).toHaveClass('banner') // banner first, strip right below
-    const headerBack = document.querySelector('header.topbar > button.return-link--header')
+    const headerBack = document.querySelector('header.shell-bar .top-menu button.return-link--header')
     expect(headerBack).not.toBeNull() // in the shell bar's actions, not inside the title block
   })
 
