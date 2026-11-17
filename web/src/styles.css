@@ -8,7 +8,7 @@ body {
   color: var(--text);
 }
 .shell { padding-bottom: 32px; }
-.page { max-width: 1100px; margin: 0 auto; padding: 16px 0 32px; }
+.page { max-width: 2200px; margin: 0 auto; padding: 16px 0 32px; }
 main:focus:not(:focus-visible) { outline: none; }
 
 html { font-size: var(--fs, 16px); }
