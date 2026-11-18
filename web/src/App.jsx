@@ -13,6 +13,8 @@ import TopMenu, { applyFontSize } from './top-menu/TopMenu.jsx'
 // Opened from Customer Agent LAB (UC2.5 routes here): strip + header Back only. This lab is one fixed walkthrough with no scenario or
 // vertical to preselect, so nothing else changes.
 import ReturnLink from "./return-link/ReturnLink.jsx";
+import TalkTrackDialog from "./talk-track/TalkTrackDialog.jsx";
+import talkMd from "../../docs/talk-track.md?raw";
 
 import fs from 'node:fs'
 const LAB_VERSION = (() => { try { return JSON.parse(fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf8')).version || null; } catch { return null; } })()
@@ -40,6 +42,15 @@ export default function App() {
   const [state, setState] = useState({}) // stepId -> { request, response, refused, result }
   const [current, setCurrent] = useState('sign-in')
   const [presenter, setPresenterState] = useState(false)
+  const [talkOpen, setTalkOpen] = useState(false);
+  const talkSteps = (() => {
+    const steps = []; let n = 0;
+    for (const line of talkMd.split("\n")) {
+      const m = line.match(/^\d+\.\s+(?:"(.+?)"|\*\*(.+?)\.\*\*\s*(.*))$/);
+      if (m) { n += 1; steps.push({ id: `s${n}`, title: (m[1] || m[2]).slice(0, 60), say: m[1] || m[3] }); }
+    }
+    return steps.length ? steps : [{ id: "s1", title: "Talk track", say: talkMd.slice(0, 600) }];
+  })();
   const [error, setError] = useState(null)
   const [piFlow, setPiFlow] = useState(null) // real-mode native flow state for the credential form
   const demoUser = info?.demoUser || ''
@@ -146,6 +157,7 @@ export default function App() {
         <TopMenu
           mode={{ value: mode, onChange: switchMode, realAvailable: info ? info.realAvailable : null }}
           theme={{ value: theme, onChange: pickTheme }}
+          talkTrack={{ active: talkOpen, onToggle: () => setTalkOpen((v) => !v) }}
           fontSize={{ value: fontStep, onChange: setFontStep }}
           present={{ active: presenter, onToggle: togglePresenter }}
           help={{ href: 'https://github.com/curtismu7/meridian-a2a-hop-LAB#readme' }}
@@ -215,6 +227,8 @@ export default function App() {
           {current === 'delegation-chain' && <DelegationChain tokens={tokens} />}
         </div>
       </div>
+        <TalkTrackDialog isOpen={talkOpen} onClose={() => setTalkOpen(false)} talk={talkSteps} />
+
       </main>
     </div>
   )
