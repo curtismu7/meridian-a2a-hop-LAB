@@ -7,6 +7,8 @@ COPY web/package.json web/
 COPY server/package.json server/
 RUN npm ci --no-audit --no-fund
 COPY web web
+# web/src/App.jsx imports ../../docs/talk-track.md?raw, so the build stage needs docs/ (only web/dist reaches the final image).
+COPY docs docs
 RUN npm run build -w web
 
 FROM node:26-alpine
