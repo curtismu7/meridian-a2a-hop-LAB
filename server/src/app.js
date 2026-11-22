@@ -7,8 +7,12 @@ import { createWorkspaces, DEFAULT_WORKSPACE, WORKSPACE_HEADER } from './workspa
 import { createFlow } from './flow/orchestrator.js'
 import { createRealFlow } from './flow/realFlow.js'
 import { shelfInfo } from './shelfLink.js';
+import { createRunLog, observeStep, observeSignIn, buildRunRecord } from './runLog.js'
+import { readersFromEnv, RunObsError } from './runObservability.js'
 
-export function createApp() {
+// runLogWrite: where the one-line-per-decision log goes (stdout by default). runObsReaders: the log readers for a Real record
+// (readersFromEnv() by default: Elasticsearch with a read-only key, nothing else unless opted in).
+export function createApp({ runLogWrite, runObsReaders } = {}) {
   const app = express()
   app.disable('x-powered-by')
   app.use(express.json({ limit: '256kb' }))
@@ -29,6 +33,13 @@ export function createApp() {
   })
   const flow = createFlow()
   const realFlow = createRealFlow({ netguard })
+  const runLog = createRunLog({ write: runLogWrite })
+  app.locals.runLog = runLog // the tests record a Real-mode run through it; Real itself needs a live PingOne tenant
+  // Who the current run is about, read from the newest captured token's claims (never the token itself).
+  const who = () => {
+    const claims = (mode() === 'real' ? realFlow.captured : flow.captured).at(-1)?.decoded
+    return { sub: claims?.sub, actor: claims?.act?.client_id || claims?.act?.sub }
+  }
   const workspaces = createWorkspaces({
     build: (id) => ({ id }),
     reset: (ws) => {
@@ -109,6 +120,7 @@ export function createApp() {
   app.post('/api/flow/reset', (req, res) => {
     flow.reset()
     realFlow.reset()
+    runLog.reset()
     res.json({ ok: true })
   })
 
@@ -119,7 +131,9 @@ export function createApp() {
 
   app.post('/api/flow/run', async (req, res) => {
     const { step, overrides } = req.body || {}
-    const result = mode() === 'real' ? await realFlow.runStep(step, overrides) : await flow.runStep(step, overrides)
+    const source = mode()
+    const result = source === 'real' ? await realFlow.runStep(step, overrides) : await flow.runStep(step, overrides)
+    for (const e of observeStep({ source, stepId: step, result, who: who() })) runLog.record(e)
     res.json(result)
   })
 
@@ -127,7 +141,24 @@ export function createApp() {
   app.post('/api/flow/sign-in-submit', async (req, res) => {
     if (mode() !== 'real') return res.status(409).json({ error: 'sign-in-submit is a real-mode route' })
     const { username, password } = req.body || {}
-    res.json(await realFlow.signInSubmit({ username, password }))
+    const outcome = await realFlow.signInSubmit({ username, password })
+    if (outcome.response?.access_token || (outcome.ok === false && typeof outcome.status === 'number')) for (const e of observeSignIn({ source: 'real', outcome, who: who() })) runLog.record(e)
+    res.json(outcome)
+  })
+
+  // Run observability (rule 27): what each layer left behind for the CURRENT run, in the current mode. Mock rows are simulated
+  // (computed by the mock on this run); Real rows are the replies the lab received plus whatever the Elasticsearch reader found.
+  app.get('/api/run-observability', async (_req, res) => {
+    const source = mode()
+    res.set('Cache-Control', 'no-store')
+    const events = runLog.forSource(source)
+    if (!events.length) return res.status(204).end() // no run yet in this mode: not an error, the page shows its empty state
+    try {
+      res.json(await buildRunRecord({ source, events, who: who(), readers: runObsReaders ?? readersFromEnv() }))
+    } catch (e) {
+      if (e instanceof RunObsError) return res.status(e.status).json({ error: e.code, message: e.message })
+      res.status(500).json({ error: 'run_observability_failed', message: 'The run record could not be built.' })
+    }
   })
 
   // Static hosting: the built web app, with the API routes taking precedence.

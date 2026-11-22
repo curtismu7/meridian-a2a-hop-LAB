@@ -67,6 +67,43 @@ npm start          # http://127.0.0.1:7720  (mock mode; nothing else to set up)
 
 Docker (OrbStack): `docker compose up --build -d` - publishes `127.0.0.1:7720` only.
 
+## What a run leaves behind: observability (rule 27)
+
+Under the Run result the page shows **"What each layer logged for this run"** (the shared panel, vendored byte for byte in
+`web/src/run-observability/` and `server/src/runObservability.js`, pinned by `run-observability.sha256`): person, agent, Authorize,
+Privilege, agent gateway and resource server, in time order, each row with its time and an honest tag. `GET /api/run-observability`
+builds it for the current run in the current mode (`204` before a run, `{error, message}` JSON on a failure).
+
+- **Mock**: every row is `simulated`, computed from what the mock did on this run (the mock issuer's answers, the simulated door's
+  seven checks, the payouts backend's answer). Nothing is shown as read from a log.
+- **Real** (owner-run, needs PingOne and a door): `response` rows for the replies the lab received (PingOne's sign-in and exchange
+  answers, the door's HTTP status; never tagged `logged`), plus `logged` rows read from Elasticsearch with a read-only key.
+  Without `RUN_OBS_ES_URL` and `RUN_OBS_ES_READ_APIKEY` the log layers say `unreachable` and what to set; the lab keeps working.
+- **The lab's own log**: each decision this lab's server makes (sign-in, each token exchange, the door verdict, the backend answer)
+  is one stdout line, `[time] INFO|WARN: meridian-a2a-hop ... actor=<who> outcome=<allowed|refused> mode=<mock|real>`, never a token.
+
+Where the logs live and where they can stream:
+
+| Product | Lives in | Streams to |
+|---|---|---|
+| This lab (server) | container stdout, one line per decision | a collector to `demo-logs-<service>`, then a SIEM |
+| PingOne (sign-in, token exchange) | the PingOne audit activity API (SaaS) | not shipped or read here yet |
+| Privilege agent gateway (local) | `cyonproxy.log` in its log volume | the collector's file source to `ping-logs-privilege-gateway` |
+| Privilege hosted gateway and console | SIEM index `ping-siem-events-v2`, console Activity Logs | the Privilege SIEM export |
+| Payouts MCP backend | Mock: an in-process stub, no log. Real: the MCP server container stdout | the collector to `demo-logs-<service>` |
+
+**Not logged today (the panel says so, it never claims a line):** PingOne Authorize (this lab does not call it, and Authorize has
+no container log); PingOne sign-in and token exchange (audit API not read); PingFederate `audit.log` (not shipped; this lab uses
+PingOne); gateway refusal and block lines (the shape is unconfirmed, a rejected call left no line on the local gateway); Mock has no
+separate Privilege policy / AI Guard / approval event, so that layer is `not-logged` in Mock. **UNVERIFIED:** the MCP server's served
+and refused line wording, so a `logged` resource row carries the `UNVERIFIED shape` tag, and the lab's own lines are only read back
+when the collector ships this container as `demo_service` `mcp-server` (then only the resource lines match a shared matcher; the
+door, exchange and sign-in lines are deliberately worded so they never land on the wrong layer).
+
+Environment (both empty by default, in `.env.example` and passed through `docker-compose.yml`): `RUN_OBS_ES_URL` (a loopback
+Elasticsearch origin) and `RUN_OBS_ES_READ_APIKEY` (a read-only key; never returned, logged or put in an error). The compose file
+does **not** mount the Docker socket; the Docker reader (`RUN_OBS_DOCKER=1`) is for a throwaway ad-hoc override only.
+
 ## Docs
 
 - `docs/talk-track.md` - the demo story, hop by hop, plus the external-agent / third-party section

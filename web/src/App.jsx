@@ -10,6 +10,7 @@ import CapturedTokens from './CapturedTokens.jsx'
 import ShelfLink from "./components/ShelfLink.jsx";
 import VerifyMark from "./components/VerifyMark.jsx";
 import TopMenu, { applyFontSize } from './top-menu/TopMenu.jsx'
+import RunObservability from './run-observability/RunObservability.jsx'
 // Opened from Customer Agent LAB (UC2.5 routes here): strip + header Back only. This lab is one fixed walkthrough with no scenario or
 // vertical to preselect, so nothing else changes.
 import ReturnLink from "./return-link/ReturnLink.jsx";
@@ -18,6 +19,14 @@ import talkMd from "../../docs/talk-track.md?raw";
 
 import fs from 'node:fs'
 const LAB_VERSION = (() => { try { return JSON.parse(fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf8')).version || null; } catch { return null; } })()
+
+// Where this lab's run leaves logs and where they stream (rule 27); the README says the same.
+const RUN_STREAMS = [
+  { product: 'This lab (server)', lives: 'its container stdout: one [time] INFO line per decision, with the actor and the outcome, never a token', streams: 'the collector to demo-logs-<service> when one is set up, then a SIEM; Mock rows are never read from it' },
+  { product: 'PingOne (sign-in, token exchange)', lives: 'the PingOne audit activity API (SaaS)', streams: 'not shipped or read by this lab; Real shows the reply the lab received as a response row' },
+  { product: 'Privilege agent gateway (the doors)', lives: 'local: cyonproxy.log in its log volume; hosted: the SIEM index ping-siem-events-v2 and the console Activity Logs', streams: 'the collector to ping-logs-privilege-gateway; the Privilege SIEM export' },
+  { product: 'Payouts MCP backend', lives: 'Mock: in-process stub with no log; Real: the MCP server container stdout', streams: 'the collector to demo-logs-<service>' },
+]
 
 const THEME_KEY = "ma2a.theme";
 function initialTheme() {
@@ -53,6 +62,7 @@ export default function App() {
   })();
   const [error, setError] = useState(null)
   const [piFlow, setPiFlow] = useState(null) // real-mode native flow state for the credential form
+  const [obs, setObs] = useState(null) // the run observability record for the current mode (null = no run yet)
   const demoUser = info?.demoUser || ''
 
   useEffect(() => {
@@ -63,6 +73,20 @@ export default function App() {
     setPresenter(on)
     setPresenterState(on)
   }, [])
+
+  // Rule 27: re-read the run record after every hop, every Reset and every Mock/Real switch.
+  useEffect(() => {
+    let live = true
+    api.runObservability()
+      .then(({ status, body }) => {
+        if (!live) return
+        if (status === 200 && Array.isArray(body?.rows)) setObs(body)
+        else if (status !== 204 && body?.error) setObs({ error: body.error, message: body.message })
+        else setObs(null)
+      })
+      .catch(() => live && setObs({ error: 'unreachable', message: 'The run record could not be loaded.' }))
+    return () => { live = false }
+  }, [state, info?.mode])
 
   function refreshCaptured() {
     api.captured().then(({ body }) => setTokens(body.tokens ?? [])).catch(() => {})
@@ -227,6 +251,7 @@ export default function App() {
           {current === 'delegation-chain' && <DelegationChain tokens={tokens} />}
         </div>
       </div>
+      <div className="run-obs-slot"><RunObservability record={obs} source={mode} streams={RUN_STREAMS} /></div>
         <TalkTrackDialog isOpen={talkOpen} onClose={() => setTalkOpen(false)} talk={talkSteps} />
 
       </main>

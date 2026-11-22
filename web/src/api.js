@@ -16,5 +16,6 @@ export const api = {
   reset: () => jfetch('/api/flow/reset', { method: 'POST' }),
   mintExternal: () => jfetch('/api/flow/external-tokens', { method: 'POST' }),
   run: (step, overrides) => jfetch('/api/flow/run', { method: 'POST', body: JSON.stringify({ step, overrides }) }),
+  runObservability: () => jfetch('/api/run-observability'),
   switchMode: (mode) => jfetch('/api/mode', { method: 'POST', body: JSON.stringify({ mode }) }),
 }

@@ -15,6 +15,10 @@ services:
       ALLOW_MOCK_SIGNIN: "1"
       LAB_PUBLISH: loopback
       LAB_ALLOWED_HOSTS: ${LAB_ALLOWED_HOSTS:-}
+      # Run observability (rule 27), Real mode only. A loopback Elasticsearch URL and a READ-ONLY key; empty = the Real record says
+      # "unreachable" and names what to set. Never mount the Docker socket here.
+      RUN_OBS_ES_URL: ${RUN_OBS_ES_URL:-}
+      RUN_OBS_ES_READ_APIKEY: ${RUN_OBS_ES_READ_APIKEY:-}
     volumes:
       - meridian-a2a-hop-data:/data
     networks: [demo]
