@@ -10,9 +10,10 @@ import { shelfInfo } from './shelfLink.js';
 import { createRunLog, observeStep, observeSignIn, buildRunRecord } from './runLog.js'
 import { readersFromEnv, RunObsError } from './runObservability.js'
 
-// runLogWrite: where the one-line-per-decision log goes (stdout by default). runObsReaders: the log readers for a Real record
-// (readersFromEnv() by default: Elasticsearch with a read-only key, nothing else unless opted in).
-export function createApp({ runLogWrite, runObsReaders } = {}) {
+// runLog / runLogWrite: the run's decision log and where its one-line-per-decision output goes (stdout by default). runObsReaders: the
+// log readers for a Real record (readersFromEnv() by default: Elasticsearch with a read-only key, nothing else unless opted in).
+// realFlow: replaces the Real flow (the tests inject a fake, since the real one needs a live PingOne tenant).
+export function createApp({ runLog: injectedRunLog, runLogWrite, runObsReaders, realFlow: injectedRealFlow } = {}) {
   const app = express()
   app.disable('x-powered-by')
   app.use(express.json({ limit: '256kb' }))
@@ -32,9 +33,8 @@ export function createApp({ runLogWrite, runObsReaders } = {}) {
     },
   })
   const flow = createFlow()
-  const realFlow = createRealFlow({ netguard })
-  const runLog = createRunLog({ write: runLogWrite })
-  app.locals.runLog = runLog // the tests record a Real-mode run through it; Real itself needs a live PingOne tenant
+  const realFlow = injectedRealFlow ?? createRealFlow({ netguard })
+  const runLog = injectedRunLog ?? createRunLog({ write: runLogWrite })
   // Who the current run is about, read from the newest captured token's claims (never the token itself).
   const who = () => {
     const claims = (mode() === 'real' ? realFlow.captured : flow.captured).at(-1)?.decoded

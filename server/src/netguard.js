@@ -1,6 +1,9 @@
 // The netguard: the one fetch this app is allowed to use. Every outbound request goes through fetchImpl().
 //  - Mock mode: nothing leaves the process. Every request is refused before a socket opens and the real fetch is never called.
 //  - Real mode (Phase 2): only the configured PingOne issuer and the Privilege doors may be reached, no redirects, time-capped.
+// One named exception to "zero real outbound calls": the vendored shared run-observability Elasticsearch reader (runObservability.js) reads a
+// loopback RUN_OBS_ES_URL with its own fetch, in Real mode only and never in Mock (the Mock record builds no reader call). It does not go
+// through this guard and reaches no other host.
 // It counts attempts, so the self-test, the doctor and the tests can prove "zero".
 export class NetguardRefused extends Error {}
 

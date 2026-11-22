@@ -29,3 +29,5 @@ the default and must be fully offline; real mode (PingOne + Privilege) is owner-
   from what the mock issuer, door and backend computed, so `simulated`; Real: only replies the lab received, so `response`) and writes one
   stdout line per decision; `GET /api/run-observability` builds the record for the current mode. Real reads Elasticsearch through
   `readersFromEnv()` (`RUN_OBS_ES_URL`, `RUN_OBS_ES_READ_APIKEY`); never mount the Docker socket. Never add an event the step did not compute.
+- Zero real outbound calls (Mock) has one named exception: the vendored shared Elasticsearch reader (`runObservability.js`) reads a
+  loopback `RUN_OBS_ES_URL` with its own fetch, Real mode only, never Mock; it does not go through the netguard (see the netguard comment).

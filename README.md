@@ -80,7 +80,11 @@ builds it for the current run in the current mode (`204` before a run, `{error, 
   answers, the door's HTTP status; never tagged `logged`), plus `logged` rows read from Elasticsearch with a read-only key.
   Without `RUN_OBS_ES_URL` and `RUN_OBS_ES_READ_APIKEY` the log layers say `unreachable` and what to set; the lab keeps working.
 - **The lab's own log**: each decision this lab's server makes (sign-in, each token exchange, the door verdict, the backend answer)
-  is one stdout line, `[time] INFO|WARN: meridian-a2a-hop ... actor=<who> outcome=<allowed|refused> mode=<mock|real>`, never a token.
+  is one stdout line, `[time] INFO: meridian-a2a-hop decision <what> actor=<who> result=<passed|rejected|unclear|no-reply> mode=<mock|real>`,
+  never a token. INFO for everything except a real error (a door 5xx or no reply: WARN). Claim values are reduced to safe characters so a
+  claim cannot add a fake `key=value` pair.
+- **Real, late lines**: a collector ships lines with a delay, so the hop just run can read `not logged` at first. In Real the page shows a
+  **Re-read logs** button and reads once more about 5 seconds after each hop (Mock needs neither).
 
 Where the logs live and where they can stream:
 
@@ -95,14 +99,16 @@ Where the logs live and where they can stream:
 **Not logged today (the panel says so, it never claims a line):** PingOne Authorize (this lab does not call it, and Authorize has
 no container log); PingOne sign-in and token exchange (audit API not read); PingFederate `audit.log` (not shipped; this lab uses
 PingOne); gateway refusal and block lines (the shape is unconfirmed, a rejected call left no line on the local gateway); Mock has no
-separate Privilege policy / AI Guard / approval event, so that layer is `not-logged` in Mock. **UNVERIFIED:** the MCP server's served
-and refused line wording, so a `logged` resource row carries the `UNVERIFIED shape` tag, and the lab's own lines are only read back
-when the collector ships this container as `demo_service` `mcp-server` (then only the resource lines match a shared matcher; the
-door, exchange and sign-in lines are deliberately worded so they never land on the wrong layer).
+separate Privilege policy / AI Guard / approval event, so that layer is `not-logged` in Mock. **UNVERIFIED:** the MCP server's served and refused line wording, so a `logged` resource row carries the `UNVERIFIED shape` tag.
+**The lab's own stdout lines are not read back by the page:** no shared matcher recognises them, and they are worded (`result=rejected`,
+never refused, denied, token, audience, scope or served) so the shared MCP-server matchers, which read any `[time] INFO|WARN:` line,
+cannot turn one into a `logged` row on the wrong layer. They exist for a collector and a SIEM, not for the Real `logged` rows, which
+come only from the products' own logs.
 
 Environment (both empty by default, in `.env.example` and passed through `docker-compose.yml`): `RUN_OBS_ES_URL` (a loopback
 Elasticsearch origin) and `RUN_OBS_ES_READ_APIKEY` (a read-only key; never returned, logged or put in an error). The compose file
-does **not** mount the Docker socket; the Docker reader (`RUN_OBS_DOCKER=1`) is for a throwaway ad-hoc override only.
+does **not** mount the Docker socket; the Docker reader (`RUN_OBS_DOCKER=1`) is for a throwaway ad-hoc override only. The "zero real outbound calls" claim has one named exception: the vendored shared
+Elasticsearch reader, which reads that loopback URL with its own fetch, in Real mode only and never in Mock.
 
 ## Docs
 

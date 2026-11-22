@@ -5,17 +5,22 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import request from 'supertest'
 import http from 'node:http'
 import { createApp } from '../src/app.js'
-import { assertRunObservability, ElasticsearchReader, classify } from '../src/runObservability.js'
-import { observeStep } from '../src/runLog.js'
+import { assertRunObservability, ElasticsearchReader, classify, layerMatchers } from '../src/runObservability.js'
+import { createRunLog, observeStep, observeSignIn, doorReplyOutcome, lineValue } from '../src/runLog.js'
 
+// [time] INFO|WARN: meridian-a2a-hop decision <fields> actor=<who> result=<word> mode=<mode>
+const LINE = /^\[\d{4}-\d\d-\d\dT[\d:.]+Z\] (INFO|WARN): meridian-a2a-hop decision [A-Za-z0-9 =._:/@-]+ actor=[A-Za-z0-9._:/@-]+ result=(passed|rejected|unclear|no-reply) mode=(mock|real)$/
+const PRODUCTS = [...new Set(layerMatchers.map((m) => m.product))]
 const LAYERS = ['person', 'agent', 'authorize', 'privilege', 'gateway', 'resource']
 // Built from parts so no scanner reads a test value as a real credential.
 const JWT = ['eyJhbGciOiJSUzI1NiJ9', 'eyJzdWIiOiJ1c2VyLTcifQ', 'c2lnbmF0dXJlc2lnbmF0dXJl'].join('.')
+const FAKEKEY = ['abcdefgh', '12345678'].join('')
 const ESKEY = ['read', 'only', 'test', 'value'].join('-')
 
 let lines
 let app
-const mk = (opts = {}) => { lines = []; app = createApp({ runLogWrite: (l) => lines.push(l), ...opts }); return app }
+let runLog
+const mk = (opts = {}) => { lines = []; runLog = createRunLog({ write: (l) => lines.push(l) }); app = createApp({ runLog, ...opts }); return app }
 beforeEach(() => { delete process.env.DEMO_MODE; mk() })
 
 const run = (body) => request(app).post('/api/flow/run').send(body)
@@ -90,26 +95,23 @@ describe('Mock: simulated rows computed from what the mock did', () => {
     expect((await record()).status).toBe(204)
   })
 
-  it('the lab logs each decision as one timestamped stdout line: actor and outcome, never a token', async () => {
+  it('the lab logs each decision as one timestamped stdout line: actor and result, never a token', async () => {
     await toDoor()
     await run({ step: 'mcp-payouts' })
     const tokens = (await request(app).get('/api/flow/captured')).body.tokens.map((t) => t.raw)
     expect(tokens.length).toBeGreaterThan(0)
     expect(lines).toHaveLength(5)
     for (const l of lines) {
-      expect(l).toMatch(/^\[\d{4}-\d\d-\d\dT[\d:.]+Z\] (INFO|WARN): meridian-a2a-hop .* actor=\S+ outcome=(allowed|refused|blocked|info) mode=mock$/)
+      expect(l).toMatch(LINE)
       expect(l).not.toMatch(/eyJ/)
       for (const t of tokens) expect(l).not.toContain(t)
     }
-    // only the resource line can be read by the MCP-server matchers: a door or exchange line never lands on the wrong layer
-    const read = lines.map((l) => classify({ product: 'mcp-server', message: l }))
-    expect(lines.filter((l, i) => read[i] && !/layer=resource/.test(l))).toEqual([])
-    expect(lines.some((l) => /layer=resource/.test(l) && /served/.test(l))).toBe(true)
+    expect(lines.every((l) => / INFO: /.test(l))).toBe(true)
   })
 
   it('hostile text in a reply (a bearer, a JWT, an address, markup) is masked in the record', async () => {
     const evil = observeStep({ source: 'mock', stepId: 'third-party-exchange', who: { sub: 'jordan', actor: 'agent-1' }, result: { status: 400, response: { error: `Bearer ${JWT} from 203.0.113.9 <img src=x onerror=alert(1)>` } } })
-    app.locals.runLog.record(evil[0])
+    runLog.record(evil[0])
     const rec = (await record()).body
     expect(assertRunObservability(rec)).toEqual([])
     expect(JSON.stringify(rec)).not.toContain(JWT)
@@ -136,10 +138,10 @@ async function fakeEs(byProduct, { status = 200 } = {}) {
 }
 
 // The Real flow needs a live PingOne tenant, so the tests hand the run log what each real step would have returned.
-function recordRealRun(a) {
+function recordRealRun() {
   const who = { sub: 'user-7', actor: 'concierge-1' }
-  const step = (stepId, result) => { for (const e of observeStep({ source: 'real', stepId, result, who })) a.locals.runLog.record(e) }
-  a.locals.runLog.record({ source: 'real', layer: 'person', outcome: 'allowed', product: 'PingOne sign-in reply', actor: 'user-7', line: 'sign-in layer=person accepted', message: 'PingOne accepted the sign-in', detail: { status: 200 } })
+  const step = (stepId, result) => { for (const e of observeStep({ source: 'real', stepId, result, who })) runLog.record(e) }
+  for (const e of observeSignIn({ source: 'real', outcome: { ok: true, status: 200, response: { access_token: 'at-fake' } }, who })) runLog.record(e)
   step('third-party-exchange', { status: 200, response: {} })
   step('exchange-payouts', { status: 200, response: {} })
   step('mcp-payouts', { status: 200, gatewayTrace: [{ status: 403, trace: { source: 'real' } }] })
@@ -154,7 +156,7 @@ describe('Real: replies the lab received, plus lines read from Elasticsearch', (
     const hits = {}
     es = await fakeEs(hits)
     mk({ runObsReaders: [new ElasticsearchReader({ url: es.url, apiKey: ESKEY })] })
-    recordRealRun(app)
+    recordRealRun()
     // the line is written after the run began (inside its window)
     const stamp = new Date().toISOString()
     hits['mcp-server'] = [{ '@timestamp': stamp, message: `[${stamp}] INFO: tool query_account_payouts served for user-7`, ping_product: 'mcp-server' }]
@@ -180,7 +182,7 @@ describe('Real: replies the lab received, plus lines read from Elasticsearch', (
   it('with no reader configured: the replies still show, the log layers say unreachable and name what to set', async () => {
     process.env.DEMO_MODE = 'real'
     mk({ runObsReaders: [] })
-    recordRealRun(app)
+    recordRealRun()
     const rec = (await record()).body
     expect(assertRunObservability(rec)).toEqual([])
     expect(rec.coverage.resource).toBe('unreachable')
@@ -192,7 +194,7 @@ describe('Real: replies the lab received, plus lines read from Elasticsearch', (
     process.env.DEMO_MODE = 'real'
     es = await fakeEs({}, { status: 401 })
     mk({ runObsReaders: [new ElasticsearchReader({ url: es.url, apiKey: ESKEY })] })
-    recordRealRun(app)
+    recordRealRun()
     const res = await record()
     expect(res.status).toBe(200)
     expect(assertRunObservability(res.body)).toEqual([])
@@ -204,7 +206,7 @@ describe('Real: replies the lab received, plus lines read from Elasticsearch', (
   it("the lab's own claim check refuses before anything reaches the gateway: no gateway row, and the reason says so", async () => {
     process.env.DEMO_MODE = 'real'
     mk({ runObsReaders: [] })
-    for (const e of observeStep({ source: 'real', stepId: 'mcp-payouts', who: { sub: 'user-7' }, result: { ok: true, refused: { status: 401 }, traceNote: "This lab's own claim check refused the call before anything was sent to the gateway, so the gateway did nothing here." } })) app.locals.runLog.record(e)
+    for (const e of observeStep({ source: 'real', stepId: 'mcp-payouts', who: { sub: 'user-7' }, result: { ok: true, refused: { status: 401 }, traceNote: "This lab's own claim check refused the call before anything was sent to the gateway, so the gateway did nothing here." } })) runLog.record(e)
     const rec = (await record()).body
     expect(assertRunObservability(rec)).toEqual([])
     expect(rowsOf(rec, 'gateway')).toHaveLength(0)
@@ -225,7 +227,7 @@ describe('mode switch: both directions, and a record never carries the other mod
 
     expect((await request(app).post('/api/mode').send({ mode: 'real' })).status).toBe(200)
     expect((await record()).status).toBe(204)
-    recordRealRun(app)
+    recordRealRun()
     const real = (await record()).body
     expect(real.source).toBe('real')
     expect(assertRunObservability(real)).toEqual([])
@@ -245,5 +247,199 @@ describe('mode switch: both directions, and a record never carries the other mod
     expect((await record()).body.source).toBe('mock')
     const info = (await request(app).get('/api/info')).body
     expect(Object.keys(info).sort()).toEqual(['app', 'banner', 'demoUser', 'mode', 'realAvailable', 'realConfigured', 'workspaceId'])
+  })
+})
+
+// ---- the stdout vocabulary: no shared matcher may read a lab line, on any path, refused included ------------------------------------
+const classifyAll = (line) => PRODUCTS.filter((product) => classify({ product, message: line }) !== null)
+
+describe("the lab's own stdout lines are never read by a shared matcher", () => {
+  const events = () => [
+    ...observeStep({ source: 'mock', stepId: 'sign-in', who: { sub: 'jordan' }, result: { status: 401 } }),
+    ...observeStep({ source: 'mock', stepId: 'sign-in', who: { sub: 'jordan' }, result: { status: 200 } }),
+    ...observeStep({ source: 'mock', stepId: 'third-party-exchange', who: { sub: 'jordan' }, result: { status: 400, response: { error: 'invalid_grant' } } }),
+    ...observeStep({ source: 'real', stepId: 'third-party-exchange', who: { sub: 'user-7' }, result: { status: 403, response: { error: 'access_denied' } } }),
+    ...observeStep({ source: 'real', stepId: 'exchange-payouts', who: { sub: 'user-7' }, result: { status: 401, response: { error: 'unauthorized forbidden insufficient scope token audience' } } }),
+    ...observeSignIn({ source: 'real', outcome: { ok: false, status: 401 }, who: { sub: 'user-7' } }),
+    ...observeSignIn({ source: 'real', outcome: { ok: true, status: 200 }, who: { sub: 'user-7' } }),
+    ...observeStep({ source: 'real', stepId: 'mcp-payouts', who: { sub: 'user-7' }, result: { status: 403, response: {}, gatewayTrace: [{ status: 403 }] } }),
+    ...observeStep({ source: 'real', stepId: 'mcp-payouts', who: { sub: 'user-7' }, result: { status: 200, response: { error: { code: -32001, message: 'denied' } }, gatewayTrace: [{ status: 200 }] } }),
+    ...observeStep({ source: 'real', stepId: 'mcp-payouts', who: { sub: 'user-7' }, result: { status: 502, response: {}, gatewayTrace: [{ status: 502 }] } }),
+    ...observeStep({ source: 'real', stepId: 'mcp-payouts', who: { sub: 'user-7' }, result: { status: 502, response: {}, gatewayTrace: [{ status: null }] } }),
+    ...observeStep({ source: 'real', stepId: 'mcp-payouts', who: { sub: 'user-7' }, result: { refused: { status: 401 }, traceNote: 'refused before the gateway, denied' } }),
+    ...observeStep({ source: 'mock', stepId: 'mcp-payouts', who: { sub: 'jordan' }, result: { refused: { status: 403, error: 'tool_not_allowed' }, gatewayTrace: [{ trace: { decisions: [{ id: 'tool', outcome: 'fail' }], request: { body: { tool: 'take_guest_payment' } } } }] } }),
+    ...observeStep({ source: 'mock', stepId: 'mcp-payouts', who: { sub: 'jordan' }, result: { refused: { status: 403 }, gatewayTrace: [{ trace: { decisions: [{ id: 'door', outcome: 'pass' }, { id: 'backend', outcome: 'fail', evidence: 'refused' }], request: { body: { tool: 'x' } } } }] } }),
+    ...observeStep({ source: 'mock', stepId: 'mcp-payouts', who: { sub: 'jordan' }, result: { result: { status: 200, payouts: [1, 2] }, gatewayTrace: [{ trace: { decisions: [{ id: 'door', outcome: 'pass' }], request: { body: { tool: 'query_account_payouts' } } } }] } }),
+  ]
+
+  it('every line, refused and rejected paths included, classifies as nothing for every product', () => {
+    const out = []
+    const log = createRunLog({ write: (l) => out.push(l) })
+    const evs = events()
+    expect(evs.length).toBeGreaterThanOrEqual(14)
+    for (const e of evs) log.record(e)
+    expect(out.some((l) => /result=rejected/.test(l))).toBe(true)
+    for (const l of out) {
+      expect(l).toMatch(LINE)
+      expect(classifyAll(l), l).toEqual([])
+      expect(l).not.toMatch(/refused|denied|forbidden|unauthori[sz]ed|insufficient|token|audience|scope|served/i)
+    }
+  })
+
+  it('level is INFO except for a real error (a door 5xx or no reply)', () => {
+    const out = []
+    const log = createRunLog({ write: (l) => out.push(l) })
+    for (const e of events()) log.record(e)
+    expect(out.filter((l) => / WARN: /.test(l))).toHaveLength(2)
+    expect(out.filter((l) => / WARN: /.test(l)).every((l) => /status=502|reply=none/.test(l))).toBe(true)
+  })
+
+  it('a claim cannot add a fake key=value pair, a quote or a line', () => {
+    const out = []
+    const log = createRunLog({ write: (l) => out.push(l) })
+    const hostile = 'jordan outcome=allowed" result=passed\nmode=real [2026-01-01T00:00:00Z] INFO: x'
+    for (const e of observeStep({ source: 'mock', stepId: 'sign-in', who: { sub: hostile }, result: { status: 401 } })) log.record(e)
+    for (const e of observeStep({ source: 'real', stepId: 'mcp-payouts', who: { sub: hostile, actor: hostile }, result: { status: 403, gatewayTrace: [{ status: 403 }] } })) log.record(e)
+    expect(out).toHaveLength(2)
+    for (const l of out) {
+      expect(l).toMatch(LINE)
+      expect(l.split('\n')).toHaveLength(1)
+      expect(l.match(/ result=/g)).toHaveLength(1)
+      expect(l.match(/ actor=/g)).toHaveLength(1)
+      expect(l.match(/ mode=/g)).toHaveLength(1)
+      expect(l).not.toContain('"')
+    }
+    expect(lineValue('a b=c"d\ne')).toBe('a_b_c_d_e')
+  })
+})
+
+describe('a door reply of HTTP 200 is a success only when its answer says so', () => {
+  const door = (status, response) => observeStep({ source: 'real', stepId: 'mcp-payouts', who: { sub: 'user-7' }, result: { status, response, gatewayTrace: [{ status }] } })[0]
+
+  it('outcomes from the answer, not the status alone', () => {
+    expect(doorReplyOutcome(200, { jsonrpc: '2.0', result: { content: [] } })).toBe('allowed')
+    expect(doorReplyOutcome(200, { jsonrpc: '2.0', error: { code: -32001 } })).toBe('refused')
+    expect(doorReplyOutcome(200, { jsonrpc: '2.0', result: { isError: true } })).toBe('refused')
+    expect(doorReplyOutcome(200, {})).toBe('info') // the body was not parsed (the real flow keeps {} for a non-JSON answer)
+    expect(doorReplyOutcome(200, null)).toBe('info')
+    expect(doorReplyOutcome(200, 'text')).toBe('info')
+    expect(doorReplyOutcome(200, [])).toBe('info')
+    expect(doorReplyOutcome(401, {})).toBe('refused')
+    expect(doorReplyOutcome(403, { jsonrpc: '2.0', result: {} })).toBe('refused')
+    expect(doorReplyOutcome(500, {})).toBe('info')
+  })
+
+  it('a JSON-RPC error inside HTTP 200 is never an allowed row, and the record counts no allowed', async () => {
+    process.env.DEMO_MODE = 'real'
+    mk({ runObsReaders: [] })
+    runLog.record(door(200, { jsonrpc: '2.0', error: { code: -32001, message: 'no grant' } }))
+    const rec = (await record()).body
+    expect(assertRunObservability(rec)).toEqual([])
+    expect(rowsOf(rec, 'gateway')[0]).toMatchObject({ outcome: 'refused', origin: 'response' })
+    expect(rec.summary.allowed).toBe(0)
+    runLog.reset()
+    runLog.record(door(200, {}))
+    const info = (await record()).body
+    expect(rowsOf(info, 'gateway')[0].outcome).toBe('info')
+    expect(info.summary).toMatchObject({ allowed: 0, info: 1 })
+    expect(info.rows.find((r) => r.layer === 'gateway').message).toMatch(/could not be read as a tool result/)
+  })
+})
+
+describe('an error that is not a string', () => {
+  it('an object error never reads [object Object]; it is kept in detail as bounded JSON text', () => {
+    const big = { error_description: 'x'.repeat(20000), nested: { a: [1, 2, 3] } }
+    const [ev] = observeStep({ source: 'real', stepId: 'exchange-payouts', who: { sub: 'user-7' }, result: { status: 400, response: { error: big } } })
+    expect(ev.message).not.toMatch(/object Object/)
+    expect(ev.message).toMatch(/structured error object/)
+    expect(typeof ev.detail.errorBody).toBe('string')
+    expect(ev.detail.errorBody.length).toBeLessThanOrEqual(4096)
+    expect(ev.detail.error).toBeUndefined()
+    const [str] = observeStep({ source: 'real', stepId: 'exchange-payouts', who: { sub: 'user-7' }, result: { status: 400, response: { error: 'invalid_grant' } } })
+    expect(str.message).toMatch(/rejected: invalid_grant/)
+    expect(str.detail.error).toBe('invalid_grant')
+  })
+
+  it('the record built from an object error passes the contract', async () => {
+    process.env.DEMO_MODE = 'real'
+    mk({ runObsReaders: [] })
+    for (const e of observeStep({ source: 'real', stepId: 'exchange-payouts', who: { sub: 'user-7' }, result: { status: 400, response: { error: { description: 'x'.repeat(9000), api_key: FAKEKEY } } } })) runLog.record(e)
+    const rec = (await record()).body
+    expect(assertRunObservability(rec)).toEqual([])
+    expect(JSON.stringify(rec)).not.toMatch(/object Object/)
+    expect(JSON.stringify(rec)).not.toContain(FAKEKEY)
+  })
+})
+
+// ---- the Real wiring through the routes, with a fake Real flow (the real one needs a live PingOne tenant) ----------------------------
+function fakeRealFlow({ signIn, steps = {}, captured = [] } = {}) {
+  return {
+    captured,
+    reset() { captured.length = 0 },
+    async signInSubmit() { return signIn },
+    async runStep(step) { return steps[step] },
+  }
+}
+const submit = () => request(app).post('/api/flow/sign-in-submit').send({ username: 'u', password: 'p' })
+
+describe('Real mode through the routes (fake Real flow)', () => {
+  beforeEach(() => { process.env.DEMO_MODE = 'real' })
+
+  it('a failed sign-in submit records a refused person row (a response, not a log) and the record shows it', async () => {
+    const rf = fakeRealFlow({ signIn: { ok: false, status: 401, flow: { message: 'bad credentials' } } })
+    mk({ realFlow: rf, runObsReaders: [] })
+    expect((await submit()).body.ok).toBe(false)
+    const rec = (await record()).body
+    expect(assertRunObservability(rec)).toEqual([])
+    expect(rec.source).toBe('real')
+    expect(rowsOf(rec, 'person')[0]).toMatchObject({ outcome: 'refused', origin: 'response' })
+    expect(lines).toHaveLength(1)
+    expect(lines[0]).toMatch(/layer=person status=401 .*result=rejected mode=real$/)
+  })
+
+  it('a sign-in submit with no open flow records nothing; in Mock the route is a 409 and records nothing', async () => {
+    mk({ realFlow: fakeRealFlow({ signIn: { ok: false, error: 'no_flow' } }), runObsReaders: [] })
+    await submit()
+    expect((await record()).status).toBe(204)
+    process.env.DEMO_MODE = 'mock'
+    expect((await submit()).status).toBe(409)
+    expect(lines).toHaveLength(0)
+  })
+
+  it('a whole Real run through /api/flow/run and /api/flow/sign-in-submit: who() comes from the newest captured claims, rows are responses', async () => {
+    const captured = []
+    const rf = fakeRealFlow({
+      captured,
+      signIn: { ok: true, status: 200, response: { access_token: 'at-fake' } },
+      steps: {
+        'third-party-exchange': { ok: true, step: 'third-party-exchange', status: 200, response: { access_token: 'at-fake' } },
+        'exchange-payouts': { ok: true, step: 'exchange-payouts', status: 200, response: { access_token: 'at-fake' } },
+        'mcp-payouts': { ok: true, step: 'mcp-payouts', status: 200, response: { jsonrpc: '2.0', id: 1, result: { content: [] } }, gatewayTrace: [{ status: 200, trace: { source: 'real' } }] },
+      },
+    })
+    mk({ realFlow: rf, runObsReaders: [] })
+    captured.push({ hop: 1, decoded: { sub: 'user-7' } })
+    expect((await submit()).body.ok).toBe(true)
+    captured.push({ hop: 2, decoded: { sub: 'user-7', act: { sub: 'agent-1', client_id: 'concierge-1' } } })
+    for (const step of ['third-party-exchange', 'exchange-payouts', 'mcp-payouts']) expect((await run({ step })).status).toBe(200)
+    const rec = (await record()).body
+    expect(assertRunObservability(rec)).toEqual([])
+    expect(rec.source).toBe('real')
+    expect(rec.rows.some((r) => r.origin === 'simulated')).toBe(false)
+    expect(rec.coverage).toMatchObject({ person: 'response', agent: 'response', gateway: 'response', authorize: 'not-logged' })
+    expect(rowsOf(rec, 'agent')).toHaveLength(2)
+    expect(rowsOf(rec, 'agent')[0].detail).toMatchObject({ act: 'concierge-1' }) // actor id, not the bare sub
+    expect(rowsOf(rec, 'gateway')[0]).toMatchObject({ outcome: 'allowed', origin: 'response' })
+    expect(lines).toHaveLength(4)
+    expect(lines.some((l) => l.includes('actor=concierge-1'))).toBe(true)
+    expect(lines.every((l) => !l.includes('at-fake'))).toBe(true)
+    expect(JSON.stringify(rec)).not.toContain('at-fake')
+  })
+
+  it("the Real flow's own pre-checks (no person token, no payouts token) record nothing", async () => {
+    mk({ realFlow: fakeRealFlow({ steps: { 'exchange-payouts': { ok: false, status: 400, response: { error: 'no_person_token' } }, 'mcp-payouts': { ok: false, status: 400, response: { error: 'no_payouts_token' } } } }), runObsReaders: [] })
+    await run({ step: 'exchange-payouts' })
+    await run({ step: 'mcp-payouts' })
+    expect((await record()).status).toBe(204)
   })
 })
