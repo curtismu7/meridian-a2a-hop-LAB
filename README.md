@@ -76,6 +76,8 @@ builds it for the current run in the current mode (`204` before a run, `{error, 
 
 - **Mock**: every row is `simulated`, computed from what the mock did on this run (the mock issuer's answers, the simulated door's
   seven checks, the payouts backend's answer). Nothing is shown as read from a log.
+- **Summary counts:** a row whose line shape nobody has measured (UNVERIFIED) keeps its own outcome but counts as information in the
+  summary (`info`, and `unverified` says how many), never as allowed, refused or blocked.
 - **Real** (owner-run, needs PingOne and a door): `response` rows for the replies the lab received (PingOne's sign-in and exchange
   answers, the door's HTTP status; never tagged `logged`), plus `logged` rows read from Elasticsearch with a read-only key.
   Without `RUN_OBS_ES_URL` and `RUN_OBS_ES_READ_APIKEY` the log layers say `unreachable` and what to set; the lab keeps working.

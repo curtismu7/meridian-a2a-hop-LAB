@@ -47,6 +47,8 @@ export function createRunLog({ write = (line) => process.stdout.write(`${line}\n
 // ---- Step results -> decisions ---------------------------------------------------------------------------------------------------
 const doorDecisions = (result) => result?.gatewayTrace?.[0]?.trace?.decisions ?? []
 
+// The run's own ids (sub, actor) stay out of `detail`: the shared masker shortens a declared id there and its size budget reads a shortened
+// string as a cut, which would show a false "excerpt was cut" notice. They are in the row message and the stdout line.
 // The lab's own status/error text goes into a row message only as a string, bounded; an object error is kept (bounded) in detail.
 const errorParts = (error) => (typeof error === 'string' ? { text: text(error, 120), detail: { error: text(error, 120) } }
   : error === undefined || error === null ? { text: null, detail: {} }
@@ -75,7 +77,7 @@ export function observeStep({ source, stepId, result, who = {} }) {
     out.push({ ...base, layer: 'person', outcome: ok ? 'allowed' : 'refused', product: 'lab mock issuer', actor: who.sub || 'unknown',
       line: `sign-in layer=person status=${lineValue(result.status, 4)}`,
       message: ok ? `Mock sign-in of ${text(who.sub, 60)}: the mock issuer issued a person token` : `Mock sign-in was rejected (HTTP ${result.status})`,
-      detail: { status: result.status, ...(who.sub ? { sub: who.sub } : {}) } })
+      detail: { status: result.status } })
   }
 
   if ((stepId === 'third-party-exchange' || stepId === 'exchange-payouts') && typeof result.status === 'number' && !['no_person_token', 'no_payouts_token'].includes(result.response?.error)) {
@@ -85,7 +87,7 @@ export function observeStep({ source, stepId, result, who = {} }) {
     out.push({ ...base, layer: 'agent', outcome: ok ? 'allowed' : 'refused', product: source === 'mock' ? 'lab mock issuer' : 'PingOne token endpoint',
       line: `exchange layer=agent step=${lineValue(stepId)} status=${lineValue(result.status, 4)}`,
       message: ok ? `Exchange ${what}: issued, acting for ${text(who.sub, 60)}` : `Exchange ${what} was rejected: ${err.text || `HTTP ${result.status}`}`,
-      detail: { step: stepId, status: result.status, ...err.detail, ...(who.sub ? { sub: who.sub } : {}), ...(who.actor ? { act: who.actor } : {}) } })
+      detail: { step: stepId, status: result.status, ...err.detail } })
   }
 
   if (stepId === 'mcp-payouts') {

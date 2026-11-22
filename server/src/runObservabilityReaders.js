@@ -4,15 +4,20 @@
 //
 // A reader has { name, canRead(product), readLines({ product, from, to, match }) -> { lines, truncated, notes? } } and throws ReaderError when it cannot read
 // (never an empty answer for a failure). A line is { at (epoch ms), atExact (the source's own timestamp text, ISO only), product, message, host?, level?, requestId? }.
-// `match(line)` (optional) keeps only the lines the caller cares about, BEFORE the cap. When more lines match than the cap, the NEWEST are kept and
-// `truncated` is true: the caller then says absence is not proof.
-//   DockerLogReader       opt-in (RUN_OBS_DOCKER=1): GET /containers/{name}/logs on the Docker engine socket, and a read-only log file. Never POST, never exec.
+// `match(line)` (optional) keeps only the lines the caller cares about. DOCKER AND FILE: applied BEFORE the cap, so the cap counts only relevant lines.
+// ELASTICSEARCH: the query is the window plus the product and NOTHING else (no id filter, no text filter), and `match` runs AFTER Elasticsearch has
+// returned its newest 500 documents, so noise in the window can push a relevant line out; that is reported as `truncated`.
+// When more lines remain than the cap, the NEWEST are kept and `truncated` is true: the caller then says absence is not proof.
+// Reader selection (in the core): the first reader that returns lines wins; a reader that returns none is not the end, the next one is consulted.
+//   DockerLogReader       opt-in (RUN_OBS_DOCKER=1): GET /containers/{name}/logs on the Docker engine socket, and a read-only REGULAR log file. Never POST, never exec.
 //   ElasticsearchReader   the default: ONE read-only POST /<index>/_search to a LOOPBACK URL with a read-only key. Never follows a redirect.
 import http from 'node:http';
 import fs from 'node:fs/promises';
-import { ReaderError, LIMITS, ISO_RE } from './runObservability.js';
+import { ReaderError, LIMITS, ISO_RE, NAME_OK, safeName } from './runObservability.js';
 
-const NAME_OK = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/;
+const ANSI = /\u001b\[[0-9;]*m/g;
+const nullMap = (o) => { const out = Object.create(null); for (const [k, v] of Object.entries(o || {})) if (safeName(k)) out[k] = v; return out; };
+const has = (o, k) => typeof k === 'string' && Object.hasOwn(o, k);
 const DOCKER_TS = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)\s(.*)$/s;
 
 // Docker's log stream is multiplexed (8-byte header per frame) unless the container has a TTY.
@@ -28,12 +33,21 @@ function demux(buf) {
   return Buffer.concat(parts).toString('utf8');
 }
 
-// Lines that start with a space or tab continue the entry above (an indented detail block, a PingFederate [CONTINUED] dump).
+// Lines that start with a space or tab continue the entry above (an indented detail block, a PingFederate [CONTINUED] dump), EXCEPT under an entry whose
+// first line is JSON: an indented line after a JSON object is never part of it (it would break the parse and hide the real line, or forge one), and an
+// indented line with nothing above it is dropped.
+const jsonFirstLine = (m) => {
+  const f = m.split('\n', 1)[0].slice(0, LIMITS.maxLine).replace(ANSI, '').trimStart();
+  if (!f.startsWith('{')) return false;
+  try { JSON.parse(f); return true; } catch { return false; }
+};
 function joinContinuations(rows) {
   const out = [];
   for (const r of rows) {
-    if (out.length && r.continuation) out[out.length - 1].message += `\n${r.message}`;
-    else if (!r.continuation) out.push({ ...r });
+    if (!r.continuation) { out.push({ ...r }); continue; }
+    const prev = out.at(-1);
+    if (!prev || jsonFirstLine(prev.message)) continue;
+    prev.message += `\n${r.message}`;
   }
   return out;
 }
@@ -54,10 +68,10 @@ export class DockerLogReader {
   // containers: { product: containerName }; files: { product: absolute path of a log file mounted read-only }
   constructor({ socketPath = '/var/run/docker.sock', containers = {}, files = {}, timeoutMs = LIMITS.timeoutMs, maxBytes = LIMITS.maxBytes } = {}) {
     this.name = 'docker';
-    this.socketPath = socketPath; this.containers = containers; this.files = files; this.timeoutMs = timeoutMs; this.maxBytes = maxBytes;
+    this.socketPath = socketPath; this.containers = nullMap(containers); this.files = nullMap(files); this.timeoutMs = timeoutMs; this.maxBytes = maxBytes;
   }
 
-  canRead(product) { return Boolean(this.containers[product] || this.files[product]); }
+  canRead(product) { return has(this.containers, product) || has(this.files, product); }
 
   // The ONLY Docker request this class can make: GET /containers/{name}/logs. No POST, no exec, no other path.
   #get(name, from, to) {
@@ -86,15 +100,15 @@ export class DockerLogReader {
   }
 
   async readLines({ product, from, to, match }) {
-    const file = this.files[product];
+    const file = has(this.files, product) ? this.files[product] : null;
     let notes;
     if (file) {
       try { return await this.#readFile(file, { product, from, to, match }); } catch (e) {
-        if (!this.containers[product]) throw e;
+        if (!has(this.containers, product)) throw e;
         notes = [`the log file was not used (${e instanceof ReaderError ? e.message : 'unexpected error'}); read from the container instead`];
       }
     }
-    const name = this.containers[product];
+    const name = has(this.containers, product) ? this.containers[product] : null;
     if (!name) throw new ReaderError('docker_not_configured', `No container is configured for ${product}.`);
     const text = demux(await this.#get(name, from, to));
     const rows = [];
@@ -110,18 +124,24 @@ export class DockerLogReader {
   }
 
   // A log file mounted read-only (the Privilege gateway writes cyonproxy.log to a file, not stdout). Lines start with time=<RFC 3339>.
-  // The exact time format is UNVERIFIED: a line whose time is not an ISO timestamp is skipped, never given a guessed time. Only the LAST
-  // maxBytes of the file are read; when the window starts before what was read, the answer is marked truncated.
+  // Only a REGULAR file is read (a FIFO, a device or a directory is a named error, and the open cannot block). The exact time format is UNVERIFIED:
+  // a line whose time is not an ISO timestamp is skipped, never given a guessed time. Only the LAST maxBytes of the file are read; when the window
+  // starts before what was read, the answer is marked truncated. CRLF lines are read.
   async #readFile(path, ctx) {
     let handle;
+    const timer = {};
     try {
-      handle = await fs.open(path, 'r');
+      const st = await fs.stat(path);
+      if (!st.isFile()) throw new ReaderError('file_not_regular', `The log path for ${ctx.product} is not a regular file (${st.isDirectory() ? 'a directory' : st.isFIFO() ? 'a FIFO' : st.isCharacterDevice() || st.isBlockDevice() ? 'a device' : 'something else'}).`);
+      if (st.size === 0) return { lines: [], truncated: false, notes: ['the log file is empty'] };
+      const deadline = new Promise((_, reject) => { timer.id = setTimeout(() => reject(new ReaderError('file_timeout', `The log file for ${ctx.product} did not open in time.`)), 3000); });
+      handle = await Promise.race([fs.open(path, fs.constants.O_RDONLY | fs.constants.O_NONBLOCK), deadline]);
       const { size } = await handle.stat();
       const length = Math.min(size, this.maxBytes);
       const buf = Buffer.alloc(length);
       const { bytesRead } = await handle.read(buf, 0, length, size - length);
       const rows = [];
-      for (const raw of buf.subarray(0, bytesRead).toString('utf8').split('\n')) {
+      for (const raw of buf.subarray(0, bytesRead).toString('utf8').split(/\r?\n/)) {
         const m = /^time="?([^"\s]+)"?\s+(.*)$/.exec(raw);
         if (m && ISO_RE.test(m[1])) rows.push({ at: Date.parse(m[1]), atExact: m[1], message: m[2] });
       }
@@ -133,7 +153,7 @@ export class DockerLogReader {
     } catch (e) {
       if (e instanceof ReaderError) throw e;
       throw new ReaderError('file_unreadable', `The log file for ${ctx.product} is not readable (${String(e.code || e.message).slice(0, 40)}).`);
-    } finally { await handle?.close(); }
+    } finally { clearTimeout(timer.id); await handle?.close(); }
   }
 }
 
@@ -217,7 +237,7 @@ export class ElasticsearchReader {
 }
 
 // product=container,product=container  ->  { product: container }
-const pairs = (text) => Object.fromEntries(String(text || '').split(',').map((p) => p.trim().split('=')).filter((p) => p.length === 2 && p[0].trim() && p[1].trim()).map(([k, v]) => [k.trim(), v.trim()]));
+const pairs = (text) => nullMap(Object.fromEntries(String(text || '').split(',').map((p) => p.trim().split('=')).filter((p) => p.length === 2 && safeName(p[0].trim()) && p[1].trim()).map(([k, v]) => [k.trim(), v.trim()])));
 
 // The readers, in selection order, from the environment (owner decision 2026-11-22): Elasticsearch is the DEFAULT reader (the collector in
 // shared/ping-log-collector is the only thing that holds the Docker socket and ships to it; a lab reads Elasticsearch with a read key).

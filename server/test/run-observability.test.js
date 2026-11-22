@@ -52,6 +52,7 @@ describe('Mock: simulated rows computed from what the mock did', () => {
     const rec = res.body
     expect(assertRunObservability(rec)).toEqual([])
     expect(rec.source).toBe('mock')
+    expect(rec.truncated).toBe(false)
     expect(rec.rows.some((r) => r.origin === 'logged' || r.origin === 'response')).toBe(false)
     expect(rec.coverage).toEqual({ person: 'simulated', agent: 'simulated', authorize: 'not-logged', privilege: 'not-logged', gateway: 'simulated', resource: 'simulated' })
     expect(rec.reasons.authorize).toMatch(/does not call PingOne Authorize/)
@@ -63,7 +64,7 @@ describe('Mock: simulated rows computed from what the mock did', () => {
     expect(rowsOf(rec, 'resource')[0].message).toMatch(/served query_account_payouts: 5 rows/)
     const order = rec.rows.filter((r) => r.at).map((r) => LAYERS.indexOf(r.layer))
     expect(order).toEqual([...order].sort((a, b) => a - b))
-    expect(rec.summary).toEqual({ allowed: 5, refused: 0, blocked: 0, info: 0 })
+    expect(rec.summary).toEqual({ allowed: 5, refused: 0, blocked: 0, info: 0, unverified: 0 })
   })
 
   it('a refused door call: the door row says which check failed, and the backend row does not exist (it was never reached)', async () => {
@@ -87,6 +88,16 @@ describe('Mock: simulated rows computed from what the mock did', () => {
     // the payouts token at the payments door is refused by the door itself (aud); either way exactly one layer owns the refusal
     const refusedLayers = rec.rows.filter((r) => r.outcome === 'refused').map((r) => r.layer)
     expect(refusedLayers).toHaveLength(1)
+  })
+
+  it('a time the shared collector refuses (outside 2000 to 2100) is a 400 {error, message} JSON, never a blank or an HTML page', async () => {
+    runLog = createRunLog({ write: () => {}, clock: () => Date.parse('1999-06-01T00:00:00Z') })
+    app = createApp({ runLog })
+    await run({ step: 'sign-in' })
+    const res = await record()
+    expect(res.status).toBe(400)
+    expect(res.headers['content-type']).toMatch(/json/)
+    expect(res.body).toMatchObject({ error: expect.any(String), message: expect.any(String) })
   })
 
   it('Reset clears the run: back to 204', async () => {
@@ -160,7 +171,7 @@ describe('Real: replies the lab received, plus lines read from Elasticsearch', (
     recordRealRun()
     // the line is written after the run began (inside its window)
     const stamp = new Date().toISOString()
-    hits['mcp-server'] = [{ '@timestamp': stamp, message: `[${stamp}] INFO: tool query_account_payouts served for user-7`, ping_product: 'mcp-server' }]
+    hits['mcp-server'] = [{ '@timestamp': stamp, message: `[${stamp}] INFO: Tool query_account_payouts served`, ping_product: 'mcp-server' }]
     const res = await record()
     expect(res.status).toBe(200)
     const rec = res.body
@@ -173,6 +184,9 @@ describe('Real: replies the lab received, plus lines read from Elasticsearch', (
     expect(rec.coverage.authorize).toBe('not-logged')
     expect(rec.coverage.resource).toBe('logged')
     expect(rowsOf(rec, 'resource')[0]).toMatchObject({ origin: 'logged', basis: 'unverified-shape' })
+    // an unverified shape is counted as information (and as unverified), never as allowed: 3 response rows allowed, 1 refused
+    expect(rec.summary).toMatchObject({ allowed: 3, refused: 1, unverified: 1 })
+    expect(rec.summary.info).toBeGreaterThanOrEqual(1)
     expect(rowsOf(rec, 'gateway')[0]).toMatchObject({ origin: 'response', outcome: 'refused' })
     // Elasticsearch is read with the read key, one search per product, and the key is not in the record
     expect(es.seen.length).toBeGreaterThan(0)
@@ -202,6 +216,20 @@ describe('Real: replies the lab received, plus lines read from Elasticsearch', (
     expect(res.body.coverage.resource).toBe('unreachable')
     expect(res.body.reasons.resource).toMatch(/refused the read credential/)
     expect(JSON.stringify(res.body)).not.toContain(ESKEY)
+  })
+
+  it('a measured MCP-server header line is a logged resource row with a measured shape, counted as information, not unverified', async () => {
+    process.env.DEMO_MODE = 'real'
+    const hits = {}
+    es = await fakeEs(hits)
+    mk({ runObsReaders: [new ElasticsearchReader({ url: es.url, apiKey: ESKEY })] })
+    recordRealRun()
+    const stamp = new Date().toISOString()
+    hits['mcp-server'] = [{ '@timestamp': stamp, message: `[${stamp}] INFO: token audience validated`, ping_product: 'mcp-server' }]
+    const rec = (await record()).body
+    expect(assertRunObservability(rec)).toEqual([])
+    expect(rowsOf(rec, 'resource')[0]).toMatchObject({ origin: 'logged', basis: 'measured-shape', outcome: 'info', matcher: 'mcp-server-validation' })
+    expect(rec.summary.unverified).toBe(0)
   })
 
   it('an Elasticsearch search cut at the cap with no match: not-logged, flagged partial, and the contract holds', async () => {
@@ -448,7 +476,9 @@ describe('Real mode through the routes (fake Real flow)', () => {
     expect(rec.rows.some((r) => r.origin === 'simulated')).toBe(false)
     expect(rec.coverage).toMatchObject({ person: 'response', agent: 'response', gateway: 'response', authorize: 'not-logged' })
     expect(rowsOf(rec, 'agent')).toHaveLength(2)
-    expect(rowsOf(rec, 'agent')[0].detail).toMatchObject({ act: 'concierge-1' }) // actor id, not the bare sub
+    expect(rec.truncated).toBe(false) // ids in a row do not make a false "excerpt was cut" notice
+    expect(rowsOf(rec, 'agent')[0].message).toMatch(/acting for user-7/)
+    expect(JSON.stringify(rowsOf(rec, 'agent')[0].detail)).not.toMatch(/concierge-1|user-7/)
     expect(rowsOf(rec, 'gateway')[0]).toMatchObject({ outcome: 'allowed', origin: 'response' })
     expect(lines).toHaveLength(4)
     expect(lines.some((l) => l.includes('actor=concierge-1'))).toBe(true)
