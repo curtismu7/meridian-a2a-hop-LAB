@@ -5,11 +5,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import request from 'supertest'
 import http from 'node:http'
 import { createApp } from '../src/app.js'
-import { assertRunObservability, ElasticsearchReader, classify, layerMatchers } from '../src/runObservability.js'
+import { assertRunObservability, classify, layerMatchers } from '../src/runObservability.js'
+import { ElasticsearchReader } from '../src/runObservabilityReaders.js'
 import { createRunLog, observeStep, observeSignIn, doorReplyOutcome, lineValue } from '../src/runLog.js'
 
 // [time] INFO|WARN: meridian-a2a-hop decision <fields> actor=<who> result=<word> mode=<mode>
-const LINE = /^\[\d{4}-\d\d-\d\dT[\d:.]+Z\] (INFO|WARN): meridian-a2a-hop decision [A-Za-z0-9 =._:/@-]+ actor=[A-Za-z0-9._:/@-]+ result=(passed|rejected|unclear|no-reply) mode=(mock|real)$/
+const LINE = /^\[\d{4}-\d\d-\d\dT[\d:.]+Z\] (INFO|WARN): meridian-a2a-hop decision [A-Za-z0-9 =._:/@-]+ actor=[A-Za-z0-9._:/@-]+ result=(passed|stopped|unclear|no-reply) mode=(mock|real)$/
 const PRODUCTS = [...new Set(layerMatchers.map((m) => m.product))]
 const LAYERS = ['person', 'agent', 'authorize', 'privilege', 'gateway', 'resource']
 // Built from parts so no scanner reads a test value as a real credential.
@@ -203,6 +204,20 @@ describe('Real: replies the lab received, plus lines read from Elasticsearch', (
     expect(JSON.stringify(res.body)).not.toContain(ESKEY)
   })
 
+  it('an Elasticsearch search cut at the cap with no match: not-logged, flagged partial, and the contract holds', async () => {
+    process.env.DEMO_MODE = 'real'
+    const stamp = new Date().toISOString()
+    const noise = Array.from({ length: 500 }, (_, i) => ({ '@timestamp': stamp, message: `unrelated line ${i}`, ping_product: 'mcp-server' }))
+    es = await fakeEs({ 'mcp-server': noise })
+    mk({ runObsReaders: [new ElasticsearchReader({ url: es.url, apiKey: ESKEY })] })
+    recordRealRun()
+    const rec = (await record()).body
+    expect(assertRunObservability(rec)).toEqual([])
+    expect(rec.coverage.resource).toBe('not-logged')
+    expect(rec.partial).toMatchObject({ resource: true })
+    expect(rec.reasons.resource).toMatch(/cut at the cap/)
+  })
+
   it("the lab's own claim check refuses before anything reaches the gateway: no gateway row, and the reason says so", async () => {
     process.env.DEMO_MODE = 'real'
     mk({ runObsReaders: [] })
@@ -278,12 +293,17 @@ describe("the lab's own stdout lines are never read by a shared matcher", () => 
     const evs = events()
     expect(evs.length).toBeGreaterThanOrEqual(14)
     for (const e of evs) log.record(e)
-    expect(out.some((l) => /result=rejected/.test(l))).toBe(true)
+    expect(out.some((l) => /result=stopped/.test(l))).toBe(true)
     for (const l of out) {
       expect(l).toMatch(LINE)
       expect(classifyAll(l), l).toEqual([])
-      expect(l).not.toMatch(/refused|denied|forbidden|unauthori[sz]ed|insufficient|token|audience|scope|served/i)
+      expect(l).not.toMatch(/refused|denied|forbidden|unauthori[sz]ed|insufficient|invalid|failed|expired|mismatch|rejected|not allowed|token|audience|scope|served|introspect/i)
     }
+  })
+
+  it('positive: a real MCP-server header-line shape still classifies as its own layer (the matchers are anchored, not switched off)', () => {
+    const header = '[2026-11-22T10:00:06.000Z] INFO: token audience validated'
+    expect(classify({ product: 'mcp-server', message: header })).toMatchObject({ layer: 'resource', matcher: 'mcp-server-validation', basis: 'measured-shape' })
   })
 
   it('level is INFO except for a real error (a door 5xx or no reply)', () => {
@@ -394,7 +414,7 @@ describe('Real mode through the routes (fake Real flow)', () => {
     expect(rec.source).toBe('real')
     expect(rowsOf(rec, 'person')[0]).toMatchObject({ outcome: 'refused', origin: 'response' })
     expect(lines).toHaveLength(1)
-    expect(lines[0]).toMatch(/layer=person status=401 .*result=rejected mode=real$/)
+    expect(lines[0]).toMatch(/layer=person status=401 .*result=stopped mode=real$/)
   })
 
   it('a sign-in submit with no open flow records nothing; in Mock the route is a 409 and records nothing', async () => {

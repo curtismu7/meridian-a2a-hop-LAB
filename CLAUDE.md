@@ -23,11 +23,12 @@ the default and must be fully offline; real mode (PingOne + Privilege) is owner-
   detail, so decisions are `inferred` or `observed`, never `checked`; the lab's own claim pre-check and the local-backends fallback send
   nothing to the gateway and have no trace. The token is never in a trace (mock: shortened, real: length only). The wording is about a
   delegated call between agents, via the builder's `grant` option.
-- Run observability (rule 27): `web/src/run-observability/` and `server/src/runObservability.js` are vendored byte for byte from
-  AI-DEMO-Standalone `shared/run-observability` and pinned by `run-observability.sha256` (never hand-edit; re-vendor, re-pin; the pin lists
-  the server file as plain `runObservability.js`). The lab's own half is `server/src/runLog.js`: it records each decision a step made (Mock:
+- Run observability (rule 27): `web/src/run-observability/`, the core `server/src/runObservability.js` (no imports), the readers
+  `server/src/runObservabilityReaders.js` (this lab reads logs in Real) and `scripts/run-observability-checkPin.mjs` are vendored byte for
+  byte from AI-DEMO-Standalone `shared/run-observability` and pinned by `web/src/run-observability/run-observability.sha256` (lab-relative
+  paths; never hand-edit; re-vendor every file together; the pin test calls `checkPin(labRoot)`). The lab's own half is `server/src/runLog.js`: it records each decision a step made (Mock:
   from what the mock issuer, door and backend computed, so `simulated`; Real: only replies the lab received, so `response`) and writes one
   stdout line per decision; `GET /api/run-observability` builds the record for the current mode. Real reads Elasticsearch through
   `readersFromEnv()` (`RUN_OBS_ES_URL`, `RUN_OBS_ES_READ_APIKEY`); never mount the Docker socket. Never add an event the step did not compute.
-- Zero real outbound calls (Mock) has one named exception: the vendored shared Elasticsearch reader (`runObservability.js`) reads a
+- Zero real outbound calls (Mock) has one named exception: the vendored shared Elasticsearch reader (`runObservabilityReaders.js`) reads a
   loopback `RUN_OBS_ES_URL` with its own fetch, Real mode only, never Mock; it does not go through the netguard (see the netguard comment).

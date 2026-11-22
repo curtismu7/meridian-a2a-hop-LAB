@@ -8,18 +8,19 @@
 //   3. buildRunRecord hands them to the shared collector: Mock rows are `simulated`; Real rows are `response` plus whatever the
 //      Elasticsearch reader finds `logged` (never invented, `not-logged` when absent).
 //
-// Wording of the stdout lines: `[<iso>] INFO: meridian-a2a-hop decision layer=<layer> ... actor=<who> result=<passed|rejected|unclear|no-reply> mode=<mode>`.
-// The family's MCP-server matchers read any `[time] INFO|WARN:` line for words such as token, audience, refused, denied, served, so the
-// lab's own lines use none of them (result=rejected, never refused): NO shared matcher reads these lines, so one can never become a
-// `logged` row on the wrong layer. They are for a collector and a SIEM; the page's Real `logged` rows come only from the products' logs.
+// Wording of the stdout lines: `[<iso>] INFO: meridian-a2a-hop decision layer=<layer> ... actor=<who> result=<passed|stopped|unclear|no-reply> mode=<mode>`.
+// The family's MCP-server matchers read a `[time] INFO|WARN:` line for words such as token, audience, scope, served and refused, denied,
+// forbidden, unauthorized, insufficient, invalid, failed, expired, mismatch, rejected, not allowed, so the lab's own lines use none of them
+// (result=stopped, never refused or rejected): NO shared matcher reads these lines, so one can never become a `logged` row on the wrong layer. They are for a collector and a SIEM; the page's Real `logged` rows come only from the products' logs.
 // A test runs every line through the shared classify() for every product and expects null.
-import { createRunObservability, readersFromEnv } from './runObservability.js'
+import { createRunObservability } from './runObservability.js'
+import { readersFromEnv } from './runObservabilityReaders.js'
 
 const CAP = 200
 const text = (v, n = 240) => String(v ?? '').replace(/[\r\n\t]+/g, ' ').slice(0, n)
 // A value that goes INTO a stdout line: only safe characters survive, so a claim cannot add a fake key=value pair, a quote or a newline.
 export const lineValue = (v, n = 80) => String(v ?? '').replace(/[^A-Za-z0-9._:/@-]+/g, '_').slice(0, n) || 'unknown'
-const RESULT = { allowed: 'passed', refused: 'rejected', info: 'unclear', blocked: 'rejected' }
+const RESULT = { allowed: 'passed', refused: 'stopped', info: 'unclear', blocked: 'stopped' }
 const bounded = (v, n = 4096) => { try { return JSON.stringify(v).slice(0, n) } catch { return '<unserialisable>' } }
 
 export function createRunLog({ write = (line) => process.stdout.write(`${line}\n`), clock = () => Date.now() } = {}) {

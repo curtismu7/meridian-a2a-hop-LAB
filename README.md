@@ -70,7 +70,7 @@ Docker (OrbStack): `docker compose up --build -d` - publishes `127.0.0.1:7720` o
 ## What a run leaves behind: observability (rule 27)
 
 Under the Run result the page shows **"What each layer logged for this run"** (the shared panel, vendored byte for byte in
-`web/src/run-observability/` and `server/src/runObservability.js`, pinned by `run-observability.sha256`): person, agent, Authorize,
+`web/src/run-observability/`, the core `server/src/runObservability.js`, the log readers `server/src/runObservabilityReaders.js` and `scripts/run-observability-checkPin.mjs`, pinned by `run-observability.sha256`; the pin test calls `checkPin`): person, agent, Authorize,
 Privilege, agent gateway and resource server, in time order, each row with its time and an honest tag. `GET /api/run-observability`
 builds it for the current run in the current mode (`204` before a run, `{error, message}` JSON on a failure).
 
@@ -80,11 +80,13 @@ builds it for the current run in the current mode (`204` before a run, `{error, 
   answers, the door's HTTP status; never tagged `logged`), plus `logged` rows read from Elasticsearch with a read-only key.
   Without `RUN_OBS_ES_URL` and `RUN_OBS_ES_READ_APIKEY` the log layers say `unreachable` and what to set; the lab keeps working.
 - **The lab's own log**: each decision this lab's server makes (sign-in, each token exchange, the door verdict, the backend answer)
-  is one stdout line, `[time] INFO: meridian-a2a-hop decision <what> actor=<who> result=<passed|rejected|unclear|no-reply> mode=<mock|real>`,
+  is one stdout line, `[time] INFO: meridian-a2a-hop decision <what> actor=<who> result=<passed|stopped|unclear|no-reply> mode=<mock|real>`,
   never a token. INFO for everything except a real error (a door 5xx or no reply: WARN). Claim values are reduced to safe characters so a
   claim cannot add a fake `key=value` pair.
 - **Real, late lines**: a collector ships lines with a delay, so the hop just run can read `not logged` at first. In Real the page shows a
-  **Re-read logs** button and reads once more about 5 seconds after each hop (Mock needs neither).
+  **Re-read logs** button and reads once more about 5 seconds after each hop (Mock needs neither). If the Elasticsearch search was cut at its
+  cap (500 documents) and found nothing for a layer, the chip reads **Not found (partial search)** and the reason says absence is not proof:
+  narrow the run (Reset, run again) and re-read.
 
 Where the logs live and where they can stream:
 
@@ -100,8 +102,8 @@ Where the logs live and where they can stream:
 no container log); PingOne sign-in and token exchange (audit API not read); PingFederate `audit.log` (not shipped; this lab uses
 PingOne); gateway refusal and block lines (the shape is unconfirmed, a rejected call left no line on the local gateway); Mock has no
 separate Privilege policy / AI Guard / approval event, so that layer is `not-logged` in Mock. **UNVERIFIED:** the MCP server's served and refused line wording, so a `logged` resource row carries the `UNVERIFIED shape` tag.
-**The lab's own stdout lines are not read back by the page:** no shared matcher recognises them, and they are worded (`result=rejected`,
-never refused, denied, token, audience, scope or served) so the shared MCP-server matchers, which read any `[time] INFO|WARN:` line,
+**The lab's own stdout lines are not read back by the page:** no shared matcher recognises them, and they are worded (`result=stopped`,
+never refused, rejected, denied, invalid, failed, token, audience, scope or served) so the shared MCP-server matchers, which read any `[time] INFO|WARN:` line,
 cannot turn one into a `logged` row on the wrong layer. They exist for a collector and a SIEM, not for the Real `logged` rows, which
 come only from the products' own logs.
 

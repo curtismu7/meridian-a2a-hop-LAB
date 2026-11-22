@@ -274,7 +274,7 @@ export default function App() {
           <div className="run-obs-tools">
             <button type="button" className="run-obs-reread" data-testid="ro-reread" disabled={obsBusy} onClick={() => setReadTick((n) => n + 1)}>Re-read logs</button>
             <span className="run-obs-note" data-testid="ro-read-note">
-              {obsReadAt ? `Read at ${obsReadAt.toLocaleTimeString()}. ` : ''}A collector ships lines with a delay: the hop just run may read "not logged" until it has. The page reads again about 5 seconds after each hop.
+              {obsReadAt ? `Read at ${obsReadAt.toLocaleTimeString()}. ` : ''}A collector ships lines with a delay: the hop just run may read "not logged" until it has. The page reads again about 5 seconds after each hop. "Not found (partial search)" means the search was cut, so absence is not proof.
             </span>
           </div>
         )}

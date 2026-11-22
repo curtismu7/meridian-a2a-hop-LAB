@@ -8,7 +8,8 @@ import { createFlow } from './flow/orchestrator.js'
 import { createRealFlow } from './flow/realFlow.js'
 import { shelfInfo } from './shelfLink.js';
 import { createRunLog, observeStep, observeSignIn, buildRunRecord } from './runLog.js'
-import { readersFromEnv, RunObsError } from './runObservability.js'
+import { RunObsError } from './runObservability.js'
+import { readersFromEnv } from './runObservabilityReaders.js'
 
 // runLog / runLogWrite: the run's decision log and where its one-line-per-decision output goes (stdout by default). runObsReaders: the
 // log readers for a Real record (readersFromEnv() by default: Elasticsearch with a read-only key, nothing else unless opted in).
