@@ -53,6 +53,13 @@ html { font-size: var(--fs, 16px); }
 }
 .banner.error { border-color: var(--danger-text); color: var(--danger-text); }
 
+.run-obs-slot { margin-top: 28px; }
+.run-obs-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 8px; }
+.run-obs-reread { border: 1px solid var(--border); background: var(--surface-2); color: var(--text); border-radius: 999px; padding: 4px 14px; font-size: 13px; font-family: inherit; cursor: pointer; }
+.run-obs-reread:hover:not(:disabled) { border-color: var(--accent); }
+.run-obs-reread:disabled { opacity: 0.6; cursor: default; }
+.run-obs-reread:focus-visible { outline: 2px solid var(--accent, currentColor); outline-offset: 2px; }
+.run-obs-note { color: var(--muted); font-size: 12px; max-width: 80ch; }
 .columns { display: flex; gap: 16px; margin-top: 16px; align-items: flex-start; }
 .stepnav { width: 280px; flex-shrink: 0; display: flex; flex-direction: column; gap: 4px; }
 .stepnav-item {

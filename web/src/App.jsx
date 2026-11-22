@@ -10,6 +10,7 @@ import CapturedTokens from './CapturedTokens.jsx'
 import ShelfLink from "./components/ShelfLink.jsx";
 import VerifyMark from "./components/VerifyMark.jsx";
 import TopMenu, { applyFontSize } from './top-menu/TopMenu.jsx'
+import RunObservability from './run-observability/RunObservability.jsx'
 // Opened from Customer Agent LAB (UC2.5 routes here): strip + header Back only. This lab is one fixed walkthrough with no scenario or
 // vertical to preselect, so nothing else changes.
 import ReturnLink from "./return-link/ReturnLink.jsx";
@@ -18,6 +19,16 @@ import talkMd from "../../docs/talk-track.md?raw";
 
 import fs from 'node:fs'
 const LAB_VERSION = (() => { try { return JSON.parse(fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf8')).version || null; } catch { return null; } })()
+
+// Where this lab's run leaves logs and where they stream (rule 27); the README says the same.
+const RUN_STREAMS = [
+  { product: 'This lab (server)', lives: 'its container stdout: one [time] INFO line per decision, with the actor and the outcome, never a token', streams: 'the collector to demo-logs-<service> when one is set up, then a SIEM; Mock rows are never read from it' },
+  { product: 'PingOne (sign-in, token exchange)', lives: 'the PingOne audit activity API (SaaS)', streams: 'not shipped or read by this lab; Real shows the reply the lab received as a response row' },
+  { product: 'Privilege agent gateway (the doors)', lives: 'local: cyonproxy.log in its log volume; hosted: the SIEM index ping-siem-events-v2 and the console Activity Logs', streams: 'the collector to ping-logs-privilege-gateway; the Privilege SIEM export' },
+  { product: 'Payouts MCP backend', lives: 'Mock: in-process stub with no log; Real: the MCP server container stdout', streams: 'the collector to demo-logs-<service>' },
+]
+
+const REREAD_MS = 5000
 
 const THEME_KEY = "ma2a.theme";
 function initialTheme() {
@@ -53,6 +64,11 @@ export default function App() {
   })();
   const [error, setError] = useState(null)
   const [piFlow, setPiFlow] = useState(null) // real-mode native flow state for the credential form
+  const [obs, setObs] = useState(null) // the run observability record for the current mode (null = no run yet)
+  const [hopTick, setHopTick] = useState(0) // bumped after every hop and every sign-in submit (a failed one records a refused row too)
+  const [readTick, setReadTick] = useState(0) // bumped to re-read the record: the Re-read button and the one automatic re-read in Real
+  const [obsBusy, setObsBusy] = useState(false)
+  const [obsReadAt, setObsReadAt] = useState(null)
   const demoUser = info?.demoUser || ''
 
   useEffect(() => {
@@ -63,6 +79,30 @@ export default function App() {
     setPresenter(on)
     setPresenterState(on)
   }, [])
+
+  // Rule 27: re-read the run record after every hop, every sign-in submit, every Reset and every Mock/Real switch, and on demand.
+  useEffect(() => {
+    let live = true
+    setObsBusy(true)
+    api.runObservability()
+      .then(({ status, body }) => {
+        if (!live) return
+        if (status === 200 && Array.isArray(body?.rows)) setObs(body)
+        else if (status !== 204 && body?.error) setObs({ error: body.error, message: body.message })
+        else setObs(null)
+        setObsReadAt(new Date())
+      })
+      .catch(() => live && setObs({ error: 'unreachable', message: 'The run record could not be loaded.' }))
+      .finally(() => live && setObsBusy(false))
+    return () => { live = false }
+  }, [state, info?.mode, hopTick, readTick])
+
+  // Real only: a collector ships lines with a delay, so the hop just run reads "not logged" at first. Read once more about 5 s after it.
+  useEffect(() => {
+    if (info?.mode !== 'real' || hopTick === 0) return undefined
+    const t = setTimeout(() => setReadTick((n) => n + 1), REREAD_MS)
+    return () => clearTimeout(t)
+  }, [hopTick, info?.mode])
 
   function refreshCaptured() {
     api.captured().then(({ body }) => setTokens(body.tokens ?? [])).catch(() => {})
@@ -110,6 +150,7 @@ export default function App() {
       return // the credential form completes this hop
     }
     setState((s) => ({ ...s, [step.id]: { ...res.body, request: res.body.request ?? step.request } }))
+    setHopTick((n) => n + 1)
     refreshCaptured()
     // Stay on a refused hop so the refusal is read; advance only when the hop went through.
     const wentThrough = !res.body.refused && (res.body.status === undefined || res.body.status < 400)
@@ -208,6 +249,7 @@ export default function App() {
                   body: JSON.stringify({ username, password }),
                 })
                 const body = await res.json()
+                setHopTick((n) => n + 1) // a failed sign-in records a refused person row: re-read the record either way
                 if (body.ok && body.response?.access_token) {
                   setPiFlow(null)
                   setState((s) => ({ ...s, 'sign-in': { ok: true, response: body.response, status: 200 } }))
@@ -226,6 +268,17 @@ export default function App() {
             ))}
           {current === 'delegation-chain' && <DelegationChain tokens={tokens} />}
         </div>
+      </div>
+      <div className="run-obs-slot">
+        {mode === 'real' && (
+          <div className="run-obs-tools">
+            <button type="button" className="run-obs-reread" data-testid="ro-reread" disabled={obsBusy} onClick={() => setReadTick((n) => n + 1)}>Re-read logs</button>
+            <span className="run-obs-note" data-testid="ro-read-note">
+              {obsReadAt ? `Read at ${obsReadAt.toLocaleTimeString()}. ` : ''}A collector ships lines with a delay: the hop just run may read "not logged" until it has. The page reads again about 5 seconds after each hop. "Not found (partial search)" means the search was cut, so absence is not proof.
+            </span>
+          </div>
+        )}
+        <RunObservability record={obs} source={mode} streams={RUN_STREAMS} />
       </div>
         <TalkTrackDialog isOpen={talkOpen} onClose={() => setTalkOpen(false)} talk={talkSteps} />
 
