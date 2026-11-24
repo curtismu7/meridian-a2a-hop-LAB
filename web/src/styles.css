@@ -42,15 +42,6 @@ html { font-size: var(--fs, 16px); }
 .mode-btn:hover { border-color: var(--accent); }
 .mode-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.banner {
-  margin-top: 12px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 12px;
-  color: var(--muted);
-}
 .banner.error { border-color: var(--danger-text); color: var(--danger-text); }
 
 .run-obs-slot { margin-top: 28px; }
